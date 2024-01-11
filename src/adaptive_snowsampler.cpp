@@ -78,7 +78,7 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
     const double vehicle_longitude = msg.lon;
     const double vehicle_altitude = msg.alt_ellipsoid;
 
-
+  // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << std::endl;
   Eigen::Vector3d lv03_vehicle_position;
   // LV03 / WGS84 ellipsoid
   GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude,
@@ -88,7 +88,7 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
     geometry_msgs::msg::TransformStamped t;
     // corresponding tf variables
     t.header.stamp = this->get_clock()->now();
-    t.header.frame_id = "CH1903/LV03";
+    t.header.frame_id = "CH1903";
     t.child_frame_id = "base_link";
 
     // Turtle only exists in 2D, thus we get x and y translation

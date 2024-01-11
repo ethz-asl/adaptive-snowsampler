@@ -29,6 +29,22 @@ ament_target_dependencies(adaptive_snowsampler rclcpp std_msgs geometry_msgs px4
 target_include_directories(adaptive_snowsampler PUBLIC "${Eigen3_INCLUDE_DIRS}")
 target_link_libraries(adaptive_snowsampler)
 
+install(
+  TARGETS
+  adaptive_snowsampler
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(DIRECTORY
+  rviz
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
