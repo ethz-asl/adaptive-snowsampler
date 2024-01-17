@@ -28,7 +28,7 @@ GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node)
       std::bind(&GoalMarker::processSetPoseFeedback, this, _1));
   marker_server_.applyChanges();
   grid_map_sub_ = node_->create_subscription<grid_map_msgs::msg::GridMap>(
-      "/grid_map", 1,
+      "/elevation_map", 1,
       std::bind(&GoalMarker::GridmapCallback, this, _1));
 }
 
@@ -64,5 +64,6 @@ void GoalMarker::GridmapCallback(const grid_map_msgs::msg::GridMap &msg) {
       goal_pos_(2) = elevation + 100.0;
     }
   }
+  RCLCPP_INFO(node_->get_logger(), "Gridmap callback triggered"); 
   marker_server_.applyChanges();
 }

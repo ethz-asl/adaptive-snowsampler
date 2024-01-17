@@ -11,8 +11,10 @@
 #include <QGroupBox>
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
-#include "snowsampler_rviz/planning_interactive_markers.h"
 #include "snowsampler_rviz/pose_widget.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "mav_msgs/conversions.hpp"
+#include "mav_msgs/eigen_mav_msgs.hpp"
 #endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
@@ -47,8 +49,6 @@ class PlanningPanel : public rviz_common::Panel {
   void registerEditButton(EditButton* button);
 
   // Callback from ROS when the pose updates:
-  void updateInteractiveMarkerPose(const mav_msgs::EigenTrajectoryPoint& pose);
-  // And when we get robot odometry:
   void odometryCallback(const nav_msgs::msg::Odometry& msg);
 
   void plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg);
@@ -125,8 +125,6 @@ class PlanningPanel : public rviz_common::Panel {
   // Keep track of all the pose <-> button widgets as they're related:
   std::map<std::string, PoseWidget*> pose_widget_map_;
   std::map<std::string, EditButton*> edit_button_map_;
-  // ROS state:
-  PlanningInteractiveMarkers interactive_markers_;
 
   // QT state:
   QString namespace_;

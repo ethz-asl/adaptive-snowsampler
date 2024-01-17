@@ -37,29 +37,16 @@ namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent)
   : rviz_common::Panel(parent),
-  node_(std::make_shared<rclcpp::Node>("snowsampler_rviz")),
-  interactive_markers_(node_) {
+  node_(std::make_shared<rclcpp::Node>("snowsampler_rviz")) {
   createLayout();
   goal_marker_ = std::make_shared<GoalMarker>(node_);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1,
       std::bind(&PlanningPanel::plannerstateCallback, this, _1));
+      RCLCPP_INFO(node_->get_logger(), "Planning panel=============================================="); 
 }
 
-void PlanningPanel::onInitialize() {
-  interactive_markers_.initialize();
-  interactive_markers_.setPoseUpdatedCallback(
-      std::bind(&PlanningPanel::updateInteractiveMarkerPose, this, _1));
-
-  //! @todo(srmainwaring) port to ROS 2
-  // interactive_markers_.setFrameId(vis_manager_->getFixedFrame().toStdString());
-  // Initialize all the markers.
-  for (const auto& kv : pose_widget_map_) {
-    mav_msgs::EigenTrajectoryPoint pose;
-    kv.second->getPose(&pose);
-    interactive_markers_.enableMarker(kv.first, pose);
-  }
-}
+void PlanningPanel::onInitialize() {}
 
 void PlanningPanel::createLayout() {
   QGridLayout* service_layout = new QGridLayout;
@@ -294,19 +281,13 @@ void PlanningPanel::startEditing(const std::string& id) {
   if (search == pose_widget_map_.end()) {
     return;
   }
-  // Update fixed frame (may have changed since last time):  
-  //! @todo(srmainwaring) port to ROS 2
-  // interactive_markers_.setFrameId(vis_manager_->getFixedFrame().toStdString());
   mav_msgs::EigenTrajectoryPoint pose;
   search->second->getPose(&pose);
-  interactive_markers_.enableSetPoseMarker(pose);
-  interactive_markers_.disableMarker(id);
 }
 
 void PlanningPanel::finishEditing(const std::string& id) {
   if (currently_editing_ == id) {
     currently_editing_.clear();
-    interactive_markers_.disableSetPoseMarker();
   }
   auto search = pose_widget_map_.find(id);
   if (search == pose_widget_map_.end()) {
@@ -315,7 +296,6 @@ void PlanningPanel::finishEditing(const std::string& id) {
   rclcpp::spin_some(node_);
   mav_msgs::EigenTrajectoryPoint pose;
   search->second->getPose(&pose);
-  interactive_markers_.enableMarker(id, pose);
 }
 
 void PlanningPanel::registerPoseWidget(PoseWidget* widget) {
@@ -354,23 +334,7 @@ void PlanningPanel::load(const rviz_common::Config& config) {
   }
 }
 
-void PlanningPanel::updateInteractiveMarkerPose(const mav_msgs::EigenTrajectoryPoint& pose) {
-  if (currently_editing_.empty()) {
-    return;
-  }
-  auto search = pose_widget_map_.find(currently_editing_);
-  if (search == pose_widget_map_.end()) {
-    return;
-  }
-  search->second->setPose(pose);
-}
-
-void PlanningPanel::widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose) {
-  if (currently_editing_ == id) {
-    interactive_markers_.setPose(pose);
-  }
-  interactive_markers_.updateMarkerPose(id, pose);
-}
+void PlanningPanel::widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose) {}
 
 void PlanningPanel::callPlannerService() {
   std::string service_name = "/mavros/set_mode";
@@ -643,19 +607,20 @@ void PlanningPanel::setPlanningBudgetService() {
 }
 
 void PlanningPanel::setPlannerModeServiceNavigate() {
-  callSetPlannerStateService("/terrain_planner/set_planner_state", 2);
+  std::cout << "Fuuuuuuck" << std::endl;
+  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 2);
 }
 
 void PlanningPanel::setPlannerModeServiceAbort() {
-  callSetPlannerStateService("/terrain_planner/set_planner_state", 4);
+  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 4);
 }
 
 void PlanningPanel::setPlannerModeServiceReturn() {
-  callSetPlannerStateService("/terrain_planner/set_planner_state", 5);
+  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 5);
 }
 
 void PlanningPanel::setPlannerModeServiceRollout() {
-  callSetPlannerStateService("/terrain_planner/set_planner_state", 3);
+  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 3);
 }
 
 void PlanningPanel::callSetPlannerStateService(std::string service_name, const int mode) {
@@ -829,7 +794,6 @@ void PlanningPanel::odometryCallback(const nav_msgs::msg::Odometry& msg) {
     point.position_W = odometry.position_W;
     point.orientation_W_B = odometry.orientation_W_B;
     pose_widget_map_["start"]->setPose(point);
-    interactive_markers_.updateMarkerPose("start", point);
   }
 }
 
