@@ -1,0 +1,12 @@
+[Unit]
+Description=uXRCE Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/MicroXRCEAgent serial --dev /dev/ttyPixhawk -b 921600
+Restart=always
+User=user
+Group=user
+
+[Install]
+WantedBy=default.target
