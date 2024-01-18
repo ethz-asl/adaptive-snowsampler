@@ -5,6 +5,8 @@ using std::placeholders::_1;
 
 GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node)
   : node_(node), marker_server_("goal", node) {
+  // marker_server_.applyChanges();
+
   set_goal_marker_.header.frame_id = "map";
   set_goal_marker_.name = "set_pose";
   set_goal_marker_.scale = 100.0;
@@ -64,6 +66,5 @@ void GoalMarker::GridmapCallback(const grid_map_msgs::msg::GridMap &msg) {
       goal_pos_(2) = elevation + 100.0;
     }
   }
-  RCLCPP_INFO(node_->get_logger(), "Gridmap callback triggered"); 
   marker_server_.applyChanges();
 }

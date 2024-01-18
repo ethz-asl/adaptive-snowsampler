@@ -36,25 +36,25 @@ using namespace std::chrono_literals;
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent)
-  : rviz_common::Panel(parent),
-  node_(std::make_shared<rclcpp::Node>("snowsampler_rviz")) {
+  : rviz_common::Panel(parent) {
   createLayout();
-  goal_marker_ = std::make_shared<GoalMarker>(node_);
+  node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
+}
+
+void PlanningPanel::onInitialize() {
+  auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();  
+
+  goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1,
       std::bind(&PlanningPanel::plannerstateCallback, this, _1));
-      RCLCPP_INFO(node_->get_logger(), "Planning panel=============================================="); 
 }
-
-void PlanningPanel::onInitialize() {}
 
 void PlanningPanel::createLayout() {
   QGridLayout* service_layout = new QGridLayout;
 
   // Planner services and publications.
-  service_layout->addWidget(createTerrainLoaderGroup(), 0, 0, 1, 1);
-  service_layout->addWidget(createPlannerCommandGroup(), 1, 0, 1, 1);
-  service_layout->addWidget(createPlannerModeGroup(), 2, 0, 4, 1);
+  service_layout->addWidget(createPlannerModeGroup(), 0, 0, 4, 1);
 
   // First the names, then the start/goal, then service buttons.
   QVBoxLayout* layout = new QVBoxLayout;
