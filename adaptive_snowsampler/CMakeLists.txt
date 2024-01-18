@@ -58,7 +58,3 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
-
-# copy the geotif files to the build directory
-install(DIRECTORY resources/
-  DESTINATION share/${PROJECT_NAME}/resources/)
