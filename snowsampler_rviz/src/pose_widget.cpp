@@ -1,10 +1,10 @@
+#include "snowsampler_rviz/pose_widget.h"
+
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QHeaderView>
 #include <QTableView>
 #include <QTableWidget>
-
-#include "snowsampler_rviz/pose_widget.h"
 
 namespace snowsampler_rviz {
 

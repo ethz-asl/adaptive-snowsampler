@@ -1,10 +1,10 @@
+#include "snowsampler_rviz/edit_button.h"
+
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QHeaderView>
 #include <QTableView>
 #include <QTableWidget>
-
-#include "snowsampler_rviz/edit_button.h"
 
 namespace snowsampler_rviz {
 

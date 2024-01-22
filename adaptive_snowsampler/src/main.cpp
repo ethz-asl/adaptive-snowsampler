@@ -40,8 +40,7 @@
 
 #include "adaptive_snowsampler/adaptive_snowsampler.h"
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<AdaptiveSnowSampler>());
   rclcpp::shutdown();

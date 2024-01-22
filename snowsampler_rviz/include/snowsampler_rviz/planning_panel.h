@@ -2,19 +2,18 @@
 #define snowsampler_rviz_PLANNING_PANEL_H_
 
 #ifndef Q_MOC_RUN
+#include <QGroupBox>
 #include <nav_msgs/msg/odometry.hpp>
 #include <planner_msgs/msg/navigation_status.hpp>
 #include <rclcpp/rclcpp.hpp>
-
 #include <rviz_common/panel.hpp>
 
-#include <QGroupBox>
-#include "snowsampler_rviz/edit_button.h"
-#include "snowsampler_rviz/goal_marker.h"
-#include "snowsampler_rviz/pose_widget.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "mav_msgs/conversions.hpp"
 #include "mav_msgs/eigen_mav_msgs.hpp"
+#include "snowsampler_rviz/edit_button.h"
+#include "snowsampler_rviz/goal_marker.h"
+#include "snowsampler_rviz/pose_widget.h"
 #endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
