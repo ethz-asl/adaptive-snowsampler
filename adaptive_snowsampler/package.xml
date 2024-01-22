@@ -10,9 +10,12 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>px4_msgs</depend>
+  <depend>planner_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>grid_map_geo</depend>
   <exec_depend>ros2launch</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>

@@ -14,9 +14,15 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(px4_msgs REQUIRED)
-
+find_package(sensor_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(px4_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(planner_msgs REQUIRED)
+find_package(grid_map_core REQUIRED)
+find_package(grid_map_msgs REQUIRED)
+find_package(grid_map_ros REQUIRED)
+find_package(grid_map_geo REQUIRED)
 
 include_directories(
   include
@@ -25,9 +31,9 @@ include_directories(
 add_executable(adaptive_snowsampler
   src/main.cpp
   src/adaptive_snowsampler.cpp)
-ament_target_dependencies(adaptive_snowsampler rclcpp std_msgs geometry_msgs px4_msgs tf2 tf2_ros)
+ament_target_dependencies(adaptive_snowsampler rclcpp std_msgs geometry_msgs px4_msgs tf2 tf2_ros grid_map_core grid_map_ros grid_map_geo visualization_msgs)
 target_include_directories(adaptive_snowsampler PUBLIC "${Eigen3_INCLUDE_DIRS}")
-target_link_libraries(adaptive_snowsampler)
+target_link_libraries(adaptive_snowsampler ${planner_msgs_TARGETS})
 
 install(
   TARGETS

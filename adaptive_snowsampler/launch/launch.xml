@@ -3,14 +3,14 @@
     <arg name="location" default="braemabuel"/>
     <node pkg="tf2_ros" exec="static_transform_publisher" name="world_map" args="--frame-id world --child-frame-id map"/>
 
-    <node pkg="grid_map_geo" exec="test_tif_loader" name="test_tif_loader" output="screen">
-        <param name="tif_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel.tif"/>
-        <param name="tif_color_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel_color.tif"/>
-    </node>
+    <!-- <node pkg="grid_map_geo" exec="test_tif_loader" name="test_tif_loader" output="screen">
+        <param name="tif_path" value="/home/jaeyoung/dev/terrain-models/models/braemabuel.tif"/>
+        <param name="tif_color_path" value="/home/jaeyoung/dev/terrain-models/models/braemabuel_color.tif"/>
+    </node> -->
 
     <node pkg="adaptive_snowsampler" exec="adaptive_snowsampler" name="snowsampler_node" output="screen">
-        <!-- <param name="tif_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel.tif"/>
-        <param name="tif_color_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel_color.tif"/> -->
+        <param name="tif_path" value="/home/jaeyoung/dev/terrain-models/models/braemabuel.tif"/>
+        <param name="tif_color_path" value="/home/jaeyoung/dev/terrain-models/models/braemabuel_color.tif"/>
     </node>
 
     <group if="$(var rviz)">

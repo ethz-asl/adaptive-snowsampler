@@ -12,6 +12,8 @@
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
 
+#include "interactive_markers/menu_handler.hpp"
+
 class GoalMarker {
  public:
   GoalMarker(rclcpp::Node::SharedPtr node);
@@ -26,13 +28,25 @@ class GoalMarker {
   void processSetPoseFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
   void GridmapCallback(const grid_map_msgs::msg::GridMap &msg);
 
+  void initializeMenu();
+
+  void setStartCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
+  void setGoalCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
+
+  void callPlannerService(const std::string service_name, const Eigen::Vector3d vector);
+
+  visualization_msgs::msg::InteractiveMarkerControl makeMovePlaneControl();
+  visualization_msgs::msg::InteractiveMarkerControl makeMenuControl();
+
   rclcpp::Node::SharedPtr node_;
   rclcpp::Subscription<grid_map_msgs::msg::GridMap>::SharedPtr grid_map_sub_;
   // rclcpp::Client<>::SharedPtr goal_serviceclient_;
 
   interactive_markers::InteractiveMarkerServer marker_server_;
   visualization_msgs::msg::InteractiveMarker set_goal_marker_;
-
+  interactive_markers::MenuHandler menu_handler_;
+  interactive_markers::MenuHandler::EntryHandle menu_handler_first_entry_;
+  interactive_markers::MenuHandler::EntryHandle menu_handler_mode_last_;
   Eigen::Vector3d goal_pos_{Eigen::Vector3d::Zero()};
   grid_map::GridMap map_;
   std::mutex goal_mutex_;

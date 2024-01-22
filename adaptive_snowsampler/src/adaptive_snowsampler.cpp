@@ -42,11 +42,18 @@
 
 #include "adaptive_snowsampler/geo_conversions.h"
 #include "tf2/LinearMath/Quaternion.h"
+#include "tf2_ros/static_transform_broadcaster.h"
 
 AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort();
 
   // Publishers
+  // quality of service settings
+  rclcpp::QoS latching_qos(1);
+  latching_qos.reliable().transient_local();
+  original_map_pub_ = this->create_publisher<grid_map_msgs::msg::GridMap>("elevation_map", latching_qos);
+  target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
+
   // Subscribers
   vehicle_global_position_sub_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
       "/fmu/out/vehicle_global_position", qos_profile,
@@ -55,13 +62,102 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
       "/fmu/out/vehicle_attitude", qos_profile,
       std::bind(&AdaptiveSnowSampler::vehicleAttitudeCallback, this, std::placeholders::_1));
 
+  /// Service servers
+  setgoal_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
+      "/set_goal",
+      std::bind(&AdaptiveSnowSampler::goalPositionCallback, this, std::placeholders::_1, std::placeholders::_2));
+  setstart_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
+      "set_start",
+      std::bind(&AdaptiveSnowSampler::startPositionCallback, this, std::placeholders::_1, std::placeholders::_2));
+
   // Setup loop timers
-  statusloop_timer_ = this->create_wall_timer(20ms, std::bind(&AdaptiveSnowSampler::statusloopCallback, this));
+  statusloop_timer_ = this->create_wall_timer(1000ms, std::bind(&AdaptiveSnowSampler::statusloopCallback, this));
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  file_path_ = this->declare_parameter("tif_path", ".");
+  color_path_ = this->declare_parameter("tif_color_path", ".");
+  frame_id_ = this->declare_parameter("frame_id", "map");
 }
 
-void AdaptiveSnowSampler::statusloopCallback() {}
+void AdaptiveSnowSampler::statusloopCallback() {
+  if (!map_initialized_) {
+    loadMap();
+    map_initialized_ = true;
+    return;
+  }
+  RCLCPP_INFO_STREAM(get_logger(), "Pulbishing target position " << target_position_.transpose());
+  publishTargetNormal(target_normal_pub_, target_position_, 100.0 * target_normal_);
+}
+
+visualization_msgs::msg::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Vector3d &position,
+                                                                      const Eigen::Vector3d &normal, int id,
+                                                                      Eigen::Vector3d color,
+                                                                      const std::string marker_namespace) {
+  visualization_msgs::msg::Marker marker;
+  marker.header.frame_id = "map";
+  marker.header.stamp = rclcpp::Clock().now();
+  marker.ns = marker_namespace;
+  marker.id = id;
+  marker.type = visualization_msgs::msg::Marker::ARROW;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  std::vector<geometry_msgs::msg::Point> points;
+  geometry_msgs::msg::Point head;
+  head.x = position(0);
+  head.y = position(1);
+  head.z = position(2);
+  points.push_back(head);
+  geometry_msgs::msg::Point tail;
+  tail.x = position(0) + normal(0);
+  tail.y = position(1) + normal(1);
+  tail.z = position(2) + normal(2);
+  points.push_back(tail);
+
+  marker.points = points;
+  marker.scale.x = 10.0 * std::min(normal.norm(), 1.0);
+  marker.scale.y = 10.0 * std::min(normal.norm(), 2.0);
+  marker.scale.z = 0.0;
+  marker.color.a = 1.0;
+  marker.color.r = color(0);
+  marker.color.g = color(1);
+  marker.color.b = color(2);
+  return marker;
+}
+
+void AdaptiveSnowSampler::publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+                                              const Eigen::Vector3d &position, const Eigen::Vector3d &normal) {
+  visualization_msgs::msg::Marker marker = vector2ArrowsMsg(position, normal, 0, Eigen::Vector3d(1.0, 0.0, 1.0));
+  pub->publish(marker);
+}
+
+void AdaptiveSnowSampler::loadMap() {
+  RCLCPP_INFO_STREAM(get_logger(), "file_path " << file_path_);
+  RCLCPP_INFO_STREAM(get_logger(), "color_path " << color_path_);
+
+  map_tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
+  map_ = std::make_shared<GridMapGeo>(frame_id_);
+  map_->Load(file_path_, color_path_);
+  map_->AddLayerNormals("elevation");
+  auto msg = grid_map::GridMapRosConverter::toMessage(map_->getGridMap());
+  msg->header.stamp = now();
+  original_map_pub_->publish(std::move(msg));
+  ESPG epsg;
+  Eigen::Vector3d map_origin;
+  map_->getGlobalOrigin(epsg, map_origin);
+
+  geometry_msgs::msg::TransformStamped static_transformStamped_;
+  static_transformStamped_.header.frame_id = map_->getCoordinateName();
+  static_transformStamped_.child_frame_id = map_->getGridMap().getFrameId();
+  static_transformStamped_.transform.translation.x = map_origin.x();
+  static_transformStamped_.transform.translation.y = map_origin.y();
+  static_transformStamped_.transform.translation.z = 0.0;
+  static_transformStamped_.transform.rotation.x = 0.0;
+  static_transformStamped_.transform.rotation.y = 0.0;
+  static_transformStamped_.transform.rotation.z = 0.0;
+  static_transformStamped_.transform.rotation.w = 1.0;
+
+  map_tf_broadcaster_->sendTransform(static_transformStamped_);
+}
 
 void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAttitude &msg) {
   /// TODO: Get vehicle attitude
@@ -106,4 +202,29 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
 
   // Send the transformation
   tf_broadcaster_->sendTransform(t);
+}
+
+/// TODO: Add service caller for setting start and goal states
+
+void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
+                                               std::shared_ptr<planner_msgs::srv::SetVector3::Response> response) {
+  target_position_.x() = request->vector.x;
+  target_position_.y() = request->vector.y;
+  target_position_.z() = request->vector.z;
+
+  target_position_.z() = map_->getGridMap().atPosition("elevation", target_position_.head(2));
+  target_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", target_position_.head(2)),
+                                   map_->getGridMap().atPosition("elevation_normal_y", target_position_.head(2)),
+                                   map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
+
+  response->success = true;
+}
+
+void AdaptiveSnowSampler::startPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
+                                                std::shared_ptr<planner_msgs::srv::SetVector3::Response> response) {
+  start_position_.x() = request->vector.x;
+  start_position_.y() = request->vector.y;
+  start_position_.z() = request->vector.z;
+
+  response->success = true;
 }
