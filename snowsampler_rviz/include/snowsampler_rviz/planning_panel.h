@@ -55,9 +55,7 @@ class PlanningPanel : public rviz_common::Panel {
 
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
-  void updatePlannerName();
   void updatePlanningBudget();
-  void setPlannerName();
   void startEditing(const std::string& id);
   void finishEditing(const std::string& id);
   void widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose);
@@ -89,7 +87,6 @@ class PlanningPanel : public rviz_common::Panel {
   void callSetPlannerStateService(std::string service_name, const int mode);
   QGroupBox* createPlannerModeGroup();
   QGroupBox* createPlannerCommandGroup();
-  QGroupBox* createTerrainLoaderGroup();
 
   // ROS Stuff:
   rclcpp::Node::SharedPtr node_;
@@ -102,7 +99,6 @@ class PlanningPanel : public rviz_common::Panel {
 
   // QT stuff:
   QLineEdit* namespace_editor_;
-  QLineEdit* planner_name_editor_;
   QLineEdit* odometry_topic_editor_;
   QLineEdit* planning_budget_editor_;
   QCheckBox* terrain_align_checkbox_;

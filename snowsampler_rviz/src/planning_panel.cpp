@@ -138,25 +138,6 @@ QGroupBox* PlanningPanel::createPlannerCommandGroup() {
   return groupBox;
 }
 
-QGroupBox* PlanningPanel::createTerrainLoaderGroup() {
-  QGroupBox* groupBox = new QGroupBox(tr("Terrain Loader"));
-  QGridLayout* service_layout = new QGridLayout;
-  // Input the namespace.
-  service_layout->addWidget(new QLabel("Terrain Location:"), 0, 0, 1, 1);
-  planner_name_editor_ = new QLineEdit;
-  service_layout->addWidget(planner_name_editor_, 0, 1, 1, 1);
-  terrain_align_checkbox_ = new QCheckBox("Virtual Terrain");
-  service_layout->addWidget(terrain_align_checkbox_, 0, 2, 1, 1);
-  load_terrain_button_ = new QPushButton("Load Terrain");
-  service_layout->addWidget(load_terrain_button_, 0, 3, 1, 1);
-
-  connect(planner_name_editor_, SIGNAL(editingFinished()), this, SLOT(updatePlannerName()));
-  connect(load_terrain_button_, SIGNAL(released()), this, SLOT(setPlannerName()));
-
-  groupBox->setLayout(service_layout);
-
-  return groupBox;
-}
 
 void PlanningPanel::terrainAlignmentStateChanged(int state) {
   if (state == 0) {
@@ -187,56 +168,6 @@ void PlanningPanel::setNamespace(const QString& new_namespace) {
           std::bind(&PlanningPanel::odometryCallback, this, _1));
     }
   }
-}
-
-void PlanningPanel::updatePlannerName() {
-  QString new_planner_name = planner_name_editor_->text();
-  std::cout << "New Terrain name: " << new_planner_name.toStdString() << std::endl;
-  if (new_planner_name != planner_name_) {
-    planner_name_ = new_planner_name;
-    Q_EMIT configChanged();
-  }
-}
-
-// Set the topic name we are publishing to.
-void PlanningPanel::setPlannerName() {
-  std::cout << "[PlanningPanel] Loading new terrain:" << planner_name_.toStdString() << std::endl;
-  // Load new environment using a service
-  std::string service_name = "/terrain_planner/set_location";
-  std::string new_planner_name = planner_name_.toStdString();
-  bool align_terrain = align_terrain_on_load_;
-  std::thread t([this, service_name, new_planner_name, align_terrain] {
-    auto client = node_->create_client<planner_msgs::srv::SetString>(service_name);
-    if (!client->wait_for_service(1s)) {
-        RCLCPP_WARN_STREAM(node_->get_logger(), "Service ["
-            << service_name << "] not available.");
-        return;
-    }
-
-    auto req = std::make_shared<planner_msgs::srv::SetString::Request>();
-    req->string = new_planner_name;
-    req->align = align_terrain;
-
-    auto result = client->async_send_request(req);
-
-    if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS)
-    {
-      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service ["
-          << client->get_service_name()
-          << "] failed.");
-      return;
-    }
-
-    // try {
-    //   RCLCPP_DEBUG_STREAM(node_->get_logger, "Service name: " << service_name);
-    //   if (!ros::service::call(service_name, req)) {
-    //     std::cout << "Couldn't call service: " << service_name << std::endl;
-    //   }
-    // } catch (const std::exception& e) {
-    //   std::cout << "Service Exception: " << e.what() << std::endl;
-    // }
-  });
-  t.detach();
 }
 
 void PlanningPanel::updatePlanningBudget() { setPlanningBudget(planning_budget_editor_->text()); }
@@ -324,14 +255,6 @@ void PlanningPanel::save(rviz_common::Config config) const {
 // Load all configuration data for this panel from the given Config object.
 void PlanningPanel::load(const rviz_common::Config& config) {
   rviz_common::Panel::load(config);
-  QString topic;
-  QString ns;
-  if (config.mapGetString("planner_name", &planner_name_)) {
-    planner_name_editor_->setText(planner_name_);
-  }
-  if (config.mapGetString("planning_budget", &planning_budget_value_)) {
-    planning_budget_editor_->setText(planning_budget_value_);
-  }
 }
 
 void PlanningPanel::widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose) {}
