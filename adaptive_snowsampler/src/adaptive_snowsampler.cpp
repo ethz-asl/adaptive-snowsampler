@@ -85,7 +85,6 @@ void AdaptiveSnowSampler::statusloopCallback() {
     map_initialized_ = true;
     return;
   }
-  RCLCPP_INFO_STREAM(get_logger(), "Pulbishing target position " << target_position_.transpose());
   publishTargetNormal(target_normal_pub_, target_position_, 100.0 * target_normal_);
 }
 
@@ -160,10 +159,10 @@ void AdaptiveSnowSampler::loadMap() {
 }
 
 void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAttitude &msg) {
-  /// TODO: Get vehicle attitude
+  /// Switch vehicle orientation from NED to ENU
   vehicle_attitude_.w() = msg.q[0];
-  vehicle_attitude_.x() = msg.q[1];
-  vehicle_attitude_.y() = -msg.q[2];
+  vehicle_attitude_.x() = msg.q[2];
+  vehicle_attitude_.y() = msg.q[1];
   vehicle_attitude_.z() = -msg.q[3];
 }
 
@@ -180,7 +179,7 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
 
   geometry_msgs::msg::TransformStamped t;
   // corresponding tf variables
-  t.header.stamp = this->get_clock()->now();
+  // t.header.stamp = this->get_clock()->now();
   t.header.frame_id = "CH1903";
   t.child_frame_id = "base_link";
 

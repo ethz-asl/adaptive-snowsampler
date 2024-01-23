@@ -119,13 +119,16 @@ Visualization Manager:
           Value: true
         world:
           Value: true
-      Marker Scale: 1
+      Marker Scale: 100
       Name: TF
       Show Arrows: true
       Show Axes: true
-      Show Names: false
+      Show Names: true
       Tree:
         CH1903:
+          base_link:
+            {}
+        world:
           map:
             {}
       Update Interval: 0
@@ -176,25 +179,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3397.7109375
+      Distance: 2180.07421875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -439.85009765625
-        Y: -542.4523315429688
-        Z: 1371.478515625
+        X: -540.4993286132812
+        Y: -719.5017700195312
+        Z: 1779.17529296875
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6152032613754272
+      Pitch: 0.5802034139633179
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.890399694442749
+      Yaw: 0.9403996467590332
     Saved: ~
 Window Geometry:
   Displays:
