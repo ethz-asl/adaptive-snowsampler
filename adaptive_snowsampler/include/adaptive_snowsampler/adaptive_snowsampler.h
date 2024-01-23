@@ -42,6 +42,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <planner_msgs/srv/set_service.hpp>
 #include <planner_msgs/srv/set_vector3.hpp>
 #include <string>
 
@@ -49,6 +50,7 @@
 #include "grid_map_msgs/msg/grid_map.h"
 #include "grid_map_ros/GridMapRosConverter.hpp"
 #include "px4_msgs/msg/vehicle_attitude.hpp"
+#include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -90,21 +92,32 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   void goalPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
                             std::shared_ptr<planner_msgs::srv::SetVector3::Response> response);
+
+  void takeoffCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                       std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+
+  void landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                    std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
   void loadMap();
   visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
-                                                   int id, Eigen::Vector3d color, const std::string marker_namespace="arrow");
+                                                   int id, Eigen::Vector3d color,
+                                                   const std::string marker_namespace = "arrow");
   rclcpp::TimerBase::SharedPtr statusloop_timer_;
 
   rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
+  rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
   rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr vehicle_global_position_sub_;
 
   rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setgoal_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setstart_serviceserver_;
+  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr takeoff_serviceserver_;
+  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr land_serviceserver_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;

@@ -53,7 +53,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   latching_qos.reliable().transient_local();
   original_map_pub_ = this->create_publisher<grid_map_msgs::msg::GridMap>("elevation_map", latching_qos);
   target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
-
+  vehicle_command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>("/fmu/in/vehicle_command", qos_profile);
   // Subscribers
   vehicle_global_position_sub_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
       "/fmu/out/vehicle_global_position", qos_profile,
@@ -69,6 +69,14 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   setstart_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
       "set_start",
       std::bind(&AdaptiveSnowSampler::startPositionCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+  takeoff_serviceserver_ = this->create_service<planner_msgs::srv::SetService>(
+      "/adaptive_sampler/takeoff",
+      std::bind(&AdaptiveSnowSampler::takeoffCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+  land_serviceserver_ = this->create_service<planner_msgs::srv::SetService>(
+      "/adaptive_sampler/land",
+      std::bind(&AdaptiveSnowSampler::landCallback, this, std::placeholders::_1, std::placeholders::_2));
 
   // Setup loop timers
   statusloop_timer_ = this->create_wall_timer(1000ms, std::bind(&AdaptiveSnowSampler::statusloopCallback, this));
@@ -189,6 +197,8 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
   t.transform.translation.y = lv03_vehicle_position(1);
   t.transform.translation.z = lv03_vehicle_position(2);
 
+  vehicle_position_.z() = msg.alt;  // AMSL altitude
+
   // For the same reason, turtle can only rotate around one axis
   // and this why we set rotation in x and y to 0 and obtain
   // rotation in z axis from the message
@@ -224,6 +234,39 @@ void AdaptiveSnowSampler::startPositionCallback(const std::shared_ptr<planner_ms
   start_position_.x() = request->vector.x;
   start_position_.y() = request->vector.y;
   start_position_.z() = request->vector.z;
+
+  response->success = true;
+}
+
+void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                                          std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
+  px4_msgs::msg::VehicleCommand msg{};
+  msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
+  msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_TAKEOFF;
+  msg.param7 = vehicle_position_.z() + 50.0;
+  RCLCPP_INFO_STREAM(get_logger(), "Vehicle commanded altitude: " << vehicle_position_.z() + 50.0);
+  msg.target_system = 1;
+  msg.target_component = 1;
+  msg.source_system = 1;
+  msg.source_component = 1;
+  msg.from_external = true;
+  vehicle_command_pub_->publish(msg);
+
+  response->success = true;
+}
+
+void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                                       std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
+  px4_msgs::msg::VehicleCommand msg{};
+  msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
+  msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_LAND;
+  msg.target_system = 1;
+  msg.target_component = 1;
+  msg.source_system = 1;
+  msg.source_component = 1;
+  msg.from_external = true;
+
+  vehicle_command_pub_->publish(msg);
 
   response->success = true;
 }
