@@ -34,6 +34,9 @@ ros2 launch adaptive_snowsampler launch.xml
 
 Run the simulation instance
 ```
+export PX4_HOME_LAT=46.785479
+export PX4_HOME_LON=9.846803
+export PX4_HOME_ALT=2301.23
 make px4_sitl gz_x500
 ```
 
