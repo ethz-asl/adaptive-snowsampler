@@ -15,11 +15,18 @@ sudo rosdep init
 rosdep update
 rosdep install --from-paths src --ignore-src -y
 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to adaptive_snowsampler
+
+# post building tasks
+echo 'ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="fc5f", GROUP="dialout"' | sudo tee /etc/udev/rules.d/99-actuonix.rules #setting usb permissions
+sudo usermod -aG dialout # add user to the dailout group
+sudo reboot # needed for the usb permissions to take effect
+
 ```
 
 ## Running the code
 Run the code with the following launch file
 ```
+source ~/ros2_ws/install/setup.bash
 ros2 launch adaptive_snowsampler launch.xml
 ```
 
