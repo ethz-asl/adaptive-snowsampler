@@ -61,8 +61,8 @@ void PlanningPanel::createLayout() {
 QGroupBox* PlanningPanel::createPlannerModeGroup() {
   QGroupBox* groupBox = new QGroupBox(tr("Planner Actions"));
   QGridLayout* service_layout = new QGridLayout;
-  set_planner_state_buttons_.push_back(new QPushButton("NAVIGATE"));
-  set_planner_state_buttons_.push_back(new QPushButton("ROLLOUT"));
+  set_planner_state_buttons_.push_back(new QPushButton("TAKE OFF"));
+  set_planner_state_buttons_.push_back(new QPushButton("LAND"));
   set_planner_state_buttons_.push_back(new QPushButton("ABORT"));
   set_planner_state_buttons_.push_back(new QPushButton("RETURN"));
 
@@ -72,8 +72,8 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   service_layout->addWidget(set_planner_state_buttons_[2], 0, 3, 1, 1);
   groupBox->setLayout(service_layout);
 
-  connect(set_planner_state_buttons_[0], SIGNAL(released()), this, SLOT(setPlannerModeServiceNavigate()));
-  connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceRollout()));
+  connect(set_planner_state_buttons_[0], SIGNAL(released()), this, SLOT(setPlannerModeServiceTakeoff()));
+  connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceAbort()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
 
@@ -495,10 +495,7 @@ void PlanningPanel::setPlanningBudgetService() {
   t.detach();
 }
 
-void PlanningPanel::setPlannerModeServiceNavigate() {
-  std::cout << "Fuuuuuuck" << std::endl;
-  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 2);
-}
+void PlanningPanel::setPlannerModeServiceTakeoff() { callSetPlannerStateService("/adaptive_sampler/takeoff", 2); }
 
 void PlanningPanel::setPlannerModeServiceAbort() {
   callSetPlannerStateService("/adaptive_sampler/set_planner_state", 4);
@@ -508,20 +505,17 @@ void PlanningPanel::setPlannerModeServiceReturn() {
   callSetPlannerStateService("/adaptive_sampler/set_planner_state", 5);
 }
 
-void PlanningPanel::setPlannerModeServiceRollout() {
-  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 3);
-}
+void PlanningPanel::setPlannerModeServiceLand() { callSetPlannerStateService("/adaptive_sampler/land", 3); }
 
 void PlanningPanel::callSetPlannerStateService(std::string service_name, const int mode) {
   std::thread t([this, service_name, mode] {
-    auto client = node_->create_client<planner_msgs::srv::SetPlannerState>(service_name);
+    auto client = node_->create_client<planner_msgs::srv::SetService>(service_name);
     if (!client->wait_for_service(1s)) {
       RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
       return;
     }
 
-    auto req = std::make_shared<planner_msgs::srv::SetPlannerState::Request>();
-    req->state = mode;
+    auto req = std::make_shared<planner_msgs::srv::SetService::Request>();
 
     auto result = client->async_send_request(req);
 
