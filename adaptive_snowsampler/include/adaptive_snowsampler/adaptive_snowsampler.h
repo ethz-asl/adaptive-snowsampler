@@ -46,9 +46,11 @@
 #include <planner_msgs/srv/set_vector3.hpp>
 #include <string>
 
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "grid_map_geo/grid_map_geo.hpp"
 #include "grid_map_msgs/msg/grid_map.h"
 #include "grid_map_ros/GridMapRosConverter.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "px4_msgs/msg/vehicle_attitude.hpp"
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
@@ -72,6 +74,12 @@ class AdaptiveSnowSampler : public rclcpp::Node {
    *
    */
   void statusloopCallback();
+
+  /**
+   * @brief Status loop for running decisions
+   *
+   */
+  void cmdloopCallback();
 
   /**
    * @brief Callback for vehicle attitude
@@ -99,17 +107,29 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                     std::shared_ptr<planner_msgs::srv::SetService::Response> response);
 
+  void gotoCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                    std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
+
+  void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
+                              std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
   void loadMap();
+
   visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
                                                    int id, Eigen::Vector3d color,
                                                    const std::string marker_namespace = "arrow");
+  geometry_msgs::msg::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
+                                                          const Eigen::Vector4d orientation);
+
   rclcpp::TimerBase::SharedPtr statusloop_timer_;
+  rclcpp::TimerBase::SharedPtr cmdloop_timer_;
 
   rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
   rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr vehicle_global_position_sub_;
@@ -118,11 +138,14 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setstart_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr takeoff_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr land_serviceserver_;
+  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr goto_serviceserver_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;
 
   Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+  Eigen::Vector3d map_origin_{Eigen::Vector3d{0.0, 0.0, 0.0}};
+  std::vector<geometry_msgs::msg::PoseStamped> positionhistory_vector_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
 
   bool map_initialized_{false};

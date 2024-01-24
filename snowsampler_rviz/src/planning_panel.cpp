@@ -63,7 +63,7 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   QGridLayout* service_layout = new QGridLayout;
   set_planner_state_buttons_.push_back(new QPushButton("TAKE OFF"));
   set_planner_state_buttons_.push_back(new QPushButton("LAND"));
-  set_planner_state_buttons_.push_back(new QPushButton("ABORT"));
+  set_planner_state_buttons_.push_back(new QPushButton("GOTO TARGET"));
   set_planner_state_buttons_.push_back(new QPushButton("RETURN"));
 
   service_layout->addWidget(set_planner_state_buttons_[0], 0, 0, 1, 1);
@@ -74,7 +74,7 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
 
   connect(set_planner_state_buttons_[0], SIGNAL(released()), this, SLOT(setPlannerModeServiceTakeoff()));
   connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
-  connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceAbort()));
+  connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
 
   return groupBox;
@@ -497,8 +497,8 @@ void PlanningPanel::setPlanningBudgetService() {
 
 void PlanningPanel::setPlannerModeServiceTakeoff() { callSetPlannerStateService("/adaptive_sampler/takeoff", 2); }
 
-void PlanningPanel::setPlannerModeServiceAbort() {
-  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 4);
+void PlanningPanel::setPlannerModeServiceGoTo() {
+  callSetPlannerStateService("/adaptive_sampler/goto", 4);
 }
 
 void PlanningPanel::setPlannerModeServiceReturn() {

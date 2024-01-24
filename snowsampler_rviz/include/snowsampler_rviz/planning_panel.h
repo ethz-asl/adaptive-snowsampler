@@ -73,7 +73,7 @@ class PlanningPanel : public rviz_common::Panel {
   void DisableMaxAltitude();
   void setPlannerModeServiceTakeoff();
   void setPlannerModeServiceLand();
-  void setPlannerModeServiceAbort();
+  void setPlannerModeServiceGoTo();
   void setPlannerModeServiceReturn();
 
  protected:
