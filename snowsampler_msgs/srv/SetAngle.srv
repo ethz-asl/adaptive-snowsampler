@@ -1,0 +1,4 @@
+# SetAngle.srv
+float64 angle
+---
+bool success

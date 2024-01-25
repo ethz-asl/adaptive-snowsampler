@@ -8,19 +8,26 @@
   <license>BSD-3</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <build_depend>rosidl_default_generators</build_depend>
   <depend>rclcpp</depend>
+  <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>snowsampler_msgs</depend>
   <depend>px4_msgs</depend>
   <depend>planner_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>grid_map_geo</depend>
   <exec_depend>ros2launch</exec_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
+  <member_of_group>rosidl_interface_packages</member_of_group>
+  
   <export>
     <build_type>ament_cmake</build_type>
   </export>
