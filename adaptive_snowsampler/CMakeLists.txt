@@ -27,6 +27,15 @@ find_package(grid_map_msgs REQUIRED)
 find_package(grid_map_ros REQUIRED)
 find_package(grid_map_geo REQUIRED)
 
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  # Workaround for the supplied find script not being on CMake path in Ubuntu.
+  # https://bugs.launchpad.net/ubuntu/+source/geographiclib/+bug/1805173
+  if(IS_DIRECTORY /usr/share/cmake/geographiclib)
+    list(APPEND CMAKE_MODULE_PATH /usr/share/cmake/geographiclib)
+  endif()
+endif()
+find_package(GeographicLib REQUIRED)
+
 
 include_directories(
   include
@@ -37,7 +46,7 @@ add_executable(adaptive_snowsampler
   src/adaptive_snowsampler.cpp)
 ament_target_dependencies(adaptive_snowsampler rclcpp std_msgs geometry_msgs px4_msgs tf2 tf2_ros grid_map_core grid_map_ros grid_map_geo visualization_msgs)
 target_include_directories(adaptive_snowsampler PUBLIC "${Eigen3_INCLUDE_DIRS}")
-target_link_libraries(adaptive_snowsampler ${planner_msgs_TARGETS})
+target_link_libraries(adaptive_snowsampler ${planner_msgs_TARGETS} ${GeographicLib_LIBRARIES})
 
 install(
   TARGETS

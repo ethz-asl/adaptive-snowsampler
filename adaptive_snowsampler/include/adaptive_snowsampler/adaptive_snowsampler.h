@@ -46,6 +46,7 @@
 #include <planner_msgs/srv/set_vector3.hpp>
 #include <string>
 
+#include "GeographicLib/Geoid.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "grid_map_geo/grid_map_geo.hpp"
 #include "grid_map_msgs/msg/grid_map.h"
@@ -159,4 +160,5 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   std::shared_ptr<GridMapGeo> map_;
+  std::shared_ptr<GeographicLib::Geoid> egm96_5;
 };

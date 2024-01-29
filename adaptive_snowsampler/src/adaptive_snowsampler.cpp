@@ -46,6 +46,7 @@
 
 AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort();
+  egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
 
   // Publishers
   // quality of service settings
@@ -102,7 +103,7 @@ void AdaptiveSnowSampler::statusloopCallback() {
     map_initialized_ = true;
     return;
   }
-  publishTargetNormal(target_normal_pub_, target_position_+100.0 * target_normal_, -100.0 * target_normal_);
+  publishTargetNormal(target_normal_pub_, target_position_ + 100.0 * target_normal_, -100.0 * target_normal_);
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
 }
 
@@ -308,25 +309,29 @@ void AdaptiveSnowSampler::gotoCallback(const std::shared_ptr<planner_msgs::srv::
   msg.source_component = 1;
   msg.from_external = true;
 
-  ///TODO: transform target position to wgs84 and amsl
+  /// TODO: transform target position to wgs84 and amsl
   Eigen::Vector3d target_position_lv03 = target_position_ + map_origin_;
   double target_position_latitude;
   double target_position_longitude;
   double target_position_altitude;
-  GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(), target_position_latitude,
-                        target_position_longitude, target_position_altitude);
-  ///TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   double relative_altitude = 50.0;
+  target_position_lv03.z() = target_position_lv03.z() + relative_altitude;
+  GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
+                          target_position_latitude, target_position_longitude, target_position_altitude);
+  /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   msg.param2 = true;
   msg.param5 = target_position_latitude;
   msg.param6 = target_position_longitude;
+  double target_position_wgs84 =
+      target_position_altitude +
+      GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
+
   msg.param7 = target_position_altitude + relative_altitude;
 
   vehicle_command_pub_->publish(msg);
 
   response->success = true;
 }
-
 
 void AdaptiveSnowSampler::publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub,
                                                  const Eigen::Vector3d &position,

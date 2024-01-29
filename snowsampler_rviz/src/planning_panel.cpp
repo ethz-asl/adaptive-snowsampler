@@ -497,9 +497,7 @@ void PlanningPanel::setPlanningBudgetService() {
 
 void PlanningPanel::setPlannerModeServiceTakeoff() { callSetPlannerStateService("/adaptive_sampler/takeoff", 2); }
 
-void PlanningPanel::setPlannerModeServiceGoTo() {
-  callSetPlannerStateService("/adaptive_sampler/goto", 4);
-}
+void PlanningPanel::setPlannerModeServiceGoTo() { callSetPlannerStateService("/adaptive_sampler/goto", 4); }
 
 void PlanningPanel::setPlannerModeServiceReturn() {
   callSetPlannerStateService("/adaptive_sampler/set_planner_state", 5);
