@@ -103,6 +103,7 @@ void AdaptiveSnowSampler::statusloopCallback() {
     map_initialized_ = true;
     return;
   }
+  publishMap();
   publishTargetNormal(target_normal_pub_, target_position_ + 100.0 * target_normal_, -100.0 * target_normal_);
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
 }
@@ -167,11 +168,14 @@ void AdaptiveSnowSampler::loadMap() {
   RCLCPP_INFO_STREAM(get_logger(), "file_path " << file_path_);
   RCLCPP_INFO_STREAM(get_logger(), "color_path " << color_path_);
 
-  map_tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
   map_ = std::make_shared<GridMapGeo>(frame_id_);
   map_->Load(file_path_, color_path_);
   map_->AddLayerNormals("elevation");
+}
+
+void AdaptiveSnowSampler::publishMap() {
+  map_tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
   auto msg = grid_map::GridMapRosConverter::toMessage(map_->getGridMap());
   msg->header.stamp = now();
   original_map_pub_->publish(std::move(msg));
@@ -252,6 +256,12 @@ void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msg
   target_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", target_position_.head(2)),
                                    map_->getGridMap().atPosition("elevation_normal_y", target_position_.head(2)),
                                    map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
+
+  target_heading_ = std::atan2(target_normal_.y(), target_normal.x());
+  target_slope_ std::atan2(target_normal_.z(), target_normal_.squaredNorm() - std::pow(target_normal_.z(), 2));
+
+  RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Heading: " << target_heading_);
+  RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Slope: " << target_slope_);
 
   response->success = true;
 }

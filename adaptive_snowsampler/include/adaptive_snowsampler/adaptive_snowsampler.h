@@ -117,6 +117,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
                               std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
   void loadMap();
+  void publishMap();
 
   visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
                                                    int id, Eigen::Vector3d color,
@@ -158,6 +159,9 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d target_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d target_normal_{Eigen::Vector3d(0.0, 0.0, 1.0)};
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+
+  double target_heading_{0.0};
+  double target_slope_{0.0};
 
   std::shared_ptr<GridMapGeo> map_;
   std::shared_ptr<GeographicLib::Geoid> egm96_5;
