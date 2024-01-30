@@ -257,8 +257,8 @@ void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msg
                                    map_->getGridMap().atPosition("elevation_normal_y", target_position_.head(2)),
                                    map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
 
-  target_heading_ = std::atan2(target_normal_.y(), target_normal.x());
-  target_slope_ std::atan2(target_normal_.z(), target_normal_.squaredNorm() - std::pow(target_normal_.z(), 2));
+  target_heading_ = std::atan2(target_normal_.y(), target_normal_.x());
+  target_slope_ = std::atan2(target_normal_.z(), target_normal_.squaredNorm() - std::pow(target_normal_.z(), 2));
 
   RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Heading: " << target_heading_);
   RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Slope: " << target_slope_);
