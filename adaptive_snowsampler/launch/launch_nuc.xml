@@ -4,9 +4,8 @@
     <node pkg="tf2_ros" exec="static_transform_publisher" name="world_map" args="--frame-id world --child-frame-id map"/>
 
     <node pkg="adaptive_snowsampler" exec="adaptive_snowsampler" name="snowsampler_node" output="screen">
-        <param name="tif_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel.tif"/>
-        <param name="tif_color_path" value="$(find-pkg-share grid_map_geo)/resources/braemabuel_color.tif"/>
+        <param name="tif_path" value="$(find-pkg-share adaptive_snowsampler)/resources/$(var location).tif"/>
+        <param name="tif_color_path" value="$(find-pkg-share adaptive_snowsampler)/resources/$(var location)_color.tif"/>
     </node>
-    <node pkg="adaptive_snowsampler" exec="snowsampler_lac.py" name="snowsampler_lac_node" output="screen">
-    </node>
+    <node pkg="adaptive_snowsampler" exec="snowsampler_lac.py" name="snowsampler_lac_node" output="screen"/>
 </launch>

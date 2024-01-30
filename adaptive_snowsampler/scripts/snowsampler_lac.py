@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
 import numpy as np
-
+import time
 from lac import LAC
 from snowsampler_msgs.srv import SetAngle
 
@@ -36,7 +36,14 @@ class snowsampler_lac(Node):
         # Call the set_position function of the LAC class
         l_act = self.angle_to_length(request.angle)
         resp = self.lac.set_position(l_act)
+        timeout = 10 # seconds
+        start_time = time.time()
         while np.abs(self.current_angle - request.angle) > 0.1:
+            # Timeout if the LAC is not able to reach the desired position
+            if time.time() - start_time > timeout:
+                response.success = False
+                return response
+
             resp = self.lac.set_position(l_act)
             self.current_angle = self.length_to_angle(resp[1] / 1023 * self.stroke)
             msg = Float64()

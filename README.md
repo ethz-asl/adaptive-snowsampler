@@ -16,7 +16,7 @@ cd ..
 sudo rosdep init
 rosdep update
 rosdep install --from-paths src --ignore-src -y
-colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to adaptive_snowsampler
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to adaptive_snowsampler
 
 # post building tasks
 echo 'ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="fc5f", GROUP="dialout"' | sudo tee /etc/udev/rules.d/99-actuonix.rules #setting usb permissions
@@ -55,4 +55,9 @@ micro-ros-agent udp4 --port 8888
 Run the node
 ```
 ros2 launch adaptive_snowsampler launch.xml
+```
+
+## Setting the leg angle manually:
+```
+ros2 service call /snowsampler/set_landing_leg_angle snowsampler_msgs/srv/SetAngle '{"angle":35}'
 ```
