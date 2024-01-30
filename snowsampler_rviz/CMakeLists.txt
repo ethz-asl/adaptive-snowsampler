@@ -120,6 +120,11 @@ install(
   DESTINATION include/${PROJECT_NAME}
 )
 
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 install(
   TARGETS
   ${PROJECT_NAME}

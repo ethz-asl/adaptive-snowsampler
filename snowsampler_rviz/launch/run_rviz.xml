@@ -1,0 +1,8 @@
+<launch>
+    <arg name="visualization" default="true"/>
+
+    <group if="$(var visualization)">
+        <node exec="rviz2" name="rviz2" pkg="rviz2"  args="-d $(find-pkg-share adaptive_snowsampler)/rviz/config.rviz" />
+    </group>
+</launch>
+
