@@ -330,6 +330,15 @@ void AdaptiveSnowSampler::gotoCallback(const std::shared_ptr<planner_msgs::srv::
                           target_position_latitude, target_position_longitude, target_position_altitude);
   /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   msg.param2 = true;
+  double target_yaw = -target_heading_ + M_PI;
+  while (std::abs(target_yaw) > M_PI) { // mod2pi
+    if (target_yaw > 0.0) {
+      target_yaw = target_yaw - M_PI;
+    } else {
+      target_yaw = target_yaw + M_PI;
+    }
+  }
+  msg.param4 = target_yaw;
   msg.param5 = target_position_latitude;
   msg.param6 = target_position_longitude;
   double target_position_wgs84 =
