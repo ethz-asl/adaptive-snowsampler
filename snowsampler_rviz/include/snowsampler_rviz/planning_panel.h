@@ -3,12 +3,14 @@
 
 #ifndef Q_MOC_RUN
 #include <QGroupBox>
+#include <QLabel>
 #include <nav_msgs/msg/odometry.hpp>
 #include <planner_msgs/msg/navigation_status.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rviz_common/panel.hpp>
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "std_msgs/msg/float64.hpp"
 #include "mav_msgs/conversions.hpp"
 #include "mav_msgs/eigen_mav_msgs.hpp"
 #include "snowsampler_rviz/edit_button.h"
@@ -51,6 +53,8 @@ class PlanningPanel : public rviz_common::Panel {
   void odometryCallback(const nav_msgs::msg::Odometry& msg);
 
   void plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg);
+  void legAngleCallback(const std_msgs::msg::Float64& msg);
+  void targetAngleCallback(const std_msgs::msg::Float64& msg);
 
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
@@ -60,6 +64,7 @@ class PlanningPanel : public rviz_common::Panel {
   void widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose);
   void callPlannerService();
   void callPublishPath();
+  void callSetAngleService(double angle);
   void setGoalService();
   void setPlanningBudgetService();
   void setStartService();
@@ -85,12 +90,15 @@ class PlanningPanel : public rviz_common::Panel {
   void setMaxAltitudeConstrant(bool set_constraint);
   void callSetPlannerStateService(std::string service_name, const int mode);
   QGroupBox* createPlannerModeGroup();
+  QGroupBox* createLegControlGroup();
   QGroupBox* createPlannerCommandGroup();
 
   // ROS Stuff:
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr waypoint_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr controller_pub_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr leg_angle_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr target_angle_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<planner_msgs::msg::NavigationStatus>::SharedPtr planner_state_sub_;
 
@@ -100,6 +108,10 @@ class PlanningPanel : public rviz_common::Panel {
   QLineEdit* namespace_editor_;
   QLineEdit* odometry_topic_editor_;
   QLineEdit* planning_budget_editor_;
+  QLabel* current_angle_label_;
+  QLabel* target_angle_label_;
+  QLineEdit* angle_input_;
+  QPushButton* set_leg_angle_button_;
   QCheckBox* terrain_align_checkbox_;
   PoseWidget* start_pose_widget_;
   PoseWidget* goal_pose_widget_;

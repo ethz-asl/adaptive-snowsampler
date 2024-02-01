@@ -54,6 +54,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   latching_qos.reliable().transient_local();
   original_map_pub_ = this->create_publisher<grid_map_msgs::msg::GridMap>("elevation_map", latching_qos);
   target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
+  target_slope_pub_ = this->create_publisher<std_msgs::msg::Float64>("target_slope", 1);
   vehicle_command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>("/fmu/in/vehicle_command", qos_profile);
   referencehistory_pub_ = this->create_publisher<nav_msgs::msg::Path>("reference/path", 1);
 
@@ -258,10 +259,21 @@ void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msg
                                    map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
 
   target_heading_ = std::atan2(target_normal_.y(), target_normal_.x());
-  target_slope_ = std::atan2(target_normal_.z(), target_normal_.squaredNorm() - std::pow(target_normal_.z(), 2));
 
+  if (target_normal_.norm() > 1e-6){
+    target_slope_ = std::acos(target_normal_.dot(Eigen::Vector3d::UnitZ())/target_normal_.norm());
+  }
+  else{
+    target_slope_ = 0.0;
+  }
+  
   RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Heading: " << target_heading_);
   RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Slope: " << target_slope_);
+
+  /// Publish target slope
+  std_msgs::msg::Float64 slope_msg;
+  slope_msg.data = target_slope_*180.0/M_PI; // rad to deg
+  target_slope_pub_->publish(slope_msg);
 
   response->success = true;
 }

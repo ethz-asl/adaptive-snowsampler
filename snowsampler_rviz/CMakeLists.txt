@@ -42,6 +42,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(snowsampler_msgs REQUIRED)
 
 find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Test Concurrent)
 
@@ -96,6 +97,7 @@ target_link_libraries(${PROJECT_NAME}
   ${std_srvs_TARGETS}
   ${trajectory_msgs_TARGETS}
   ${visualization_msgs_TARGETS}
+  ${snowsampler_msgs_TARGETS}
   rviz_common::rviz_common
 )
 

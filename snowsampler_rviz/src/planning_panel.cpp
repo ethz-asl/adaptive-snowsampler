@@ -21,6 +21,7 @@
 #include <planner_msgs/srv/set_service.hpp>
 #include <planner_msgs/srv/set_string.hpp>
 #include <planner_msgs/srv/set_vector3.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <rviz_common/visualization_manager.hpp>
 #include <std_srvs/srv/empty.hpp>
 
@@ -28,22 +29,32 @@
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
 
+#include "snowsampler_msgs/srv/set_angle.hpp"
+
 using std::placeholders::_1;
 using namespace std::chrono_literals;
 
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent) : rviz_common::Panel(parent) {
-  createLayout();
+  
   node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
+  
 }
 
 void PlanningPanel::onInitialize() {
-  auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-
-  goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
+  node_ = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  createLayout();
+  RCLCPP_INFO_STREAM(node_->get_logger(),"Creating Planner Mode Group");
+  goal_marker_ = std::make_shared<GoalMarker>(node_);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1, std::bind(&PlanningPanel::plannerstateCallback, this, _1));
+  
+  leg_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+    "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
+  target_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+    "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
+  RCLCPP_INFO_STREAM(node_->get_logger(),"Subscribers Created");
 }
 
 void PlanningPanel::createLayout() {
@@ -51,11 +62,38 @@ void PlanningPanel::createLayout() {
 
   // Planner services and publications.
   service_layout->addWidget(createPlannerModeGroup(), 0, 0, 4, 1);
+  // log something
+  
+  service_layout->addWidget(createLegControlGroup(), 4, 0, 4, 2);
 
   // First the names, then the start/goal, then service buttons.
   QVBoxLayout* layout = new QVBoxLayout;
   layout->addLayout(service_layout);
   setLayout(layout);
+}
+
+QGroupBox* PlanningPanel::createLegControlGroup() {
+  QGroupBox* groupBox = new QGroupBox(tr("Leg Control Actions"));
+  QGridLayout* service_layout = new QGridLayout;
+  QPushButton* set_leg_angle_button_ = new QPushButton("SET LEG ANGLE");
+  QLineEdit* angle_input_ = new QLineEdit();
+  current_angle_label_ = new QLabel("none");
+  target_angle_label_ = new QLabel("none");
+
+  connect(set_leg_angle_button_, &QPushButton::clicked, [this, angle_input_]() {
+    QString angle_str = angle_input_->text();
+    callSetAngleService(angle_str.toDouble());
+  });
+
+  service_layout->addWidget(set_leg_angle_button_, 0, 0, 1, 1);
+  service_layout->addWidget(angle_input_, 0, 1, 1, 1);
+  service_layout->addWidget(new QLabel("Current Angle: "), 0, 2, 1, 1);
+  service_layout->addWidget(current_angle_label_, 0, 3, 1, 1);
+
+  service_layout->addWidget(new QLabel("Target Angle: "), 1, 2, 1, 1);
+  service_layout->addWidget(target_angle_label_, 1, 3, 1, 1);
+  groupBox->setLayout(service_layout);
+  return groupBox;
 }
 
 QGroupBox* PlanningPanel::createPlannerModeGroup() {
@@ -76,7 +114,6 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
-
   return groupBox;
 }
 
@@ -662,6 +699,14 @@ void PlanningPanel::odometryCallback(const nav_msgs::msg::Odometry& msg) {
   }
 }
 
+void PlanningPanel::legAngleCallback(const std_msgs::msg::Float64& msg) {
+  current_angle_label_->setText(QString::number(msg.data) + " deg");
+}
+
+void PlanningPanel::targetAngleCallback(const std_msgs::msg::Float64& msg) {
+  target_angle_label_->setText(QString::number(msg.data) + " deg");
+}
+
 void PlanningPanel::plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg) {
   switch (msg.state) {
     case PLANNER_STATE::HOLD: {
@@ -702,6 +747,22 @@ void PlanningPanel::plannerstateCallback(const planner_msgs::msg::NavigationStat
   }
 }
 
+void PlanningPanel::callSetAngleService(double angle) {
+  RCLCPP_INFO_ONCE(node_->get_logger(), "Calling service");
+  auto client = node_->create_client<snowsampler_msgs::srv::SetAngle>("snowsampler/set_landing_leg_angle");
+  auto request = std::make_shared<snowsampler_msgs::srv::SetAngle::Request>();
+  request->angle = angle;
+
+  using ServiceResponseFuture = 
+      rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+
+  auto response_received_callback = [this](ServiceResponseFuture future) {
+    auto result = future.get();
+    RCLCPP_INFO_ONCE(node_->get_logger(), "Service response: %s", result->success ? "true" : "false");
+  };
+
+  auto result_future = client->async_send_request(request, response_received_callback);
+}
 }  // namespace snowsampler_rviz
 
 #include <pluginlib/class_list_macros.hpp>  // NOLINT

@@ -24,9 +24,9 @@ sudo usermod -aG dialout # add user to the dailout group
 sudo reboot # needed for the usb permissions to take effect
 
 # installation of GeographicLib dependency
-
 cd ~
-git clone https://github.com/mavlink/mavros/tree/ros2
+git clone https://github.com/mavlink/mavros.git
+sudo apt install geographiclib-tools libgeographic-dev
 sudo ~/mavros/mavros/scripts/install_geographiclib_datasets.sh 
 
 ```
