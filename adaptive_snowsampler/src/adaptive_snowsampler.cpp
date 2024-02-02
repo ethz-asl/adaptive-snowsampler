@@ -210,7 +210,11 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAt
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg) {
   const double vehicle_latitude = msg.lat;
   const double vehicle_longitude = msg.lon;
-  const double vehicle_altitude = msg.alt_ellipsoid;
+  const double vehicle_altitude_amsl = msg.alt;  // Average mean sea level
+
+  const double vehicle_altitude =
+      vehicle_altitude_amsl + GeographicLib::Geoid::GEOIDTOELLIPSOID *
+                                  (*egm96_5)(vehicle_latitude, vehicle_longitude);  // wgs84
 
   // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << std::endl;
   Eigen::Vector3d lv03_vehicle_position;
