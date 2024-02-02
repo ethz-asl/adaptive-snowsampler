@@ -5,9 +5,7 @@ After=network.target systemd-udevd.service
 [Service]
 EnvironmentFile=/home/user/ros2_ws/src/adaptive-snowsampler/systemd/environment.conf
 ExecStart=/bin/bash /home/user/ros2_ws/src/adaptive-snowsampler/systemd/run_record.sh
-ProtectSystem=full
-User=user
-Group=user
+KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target
