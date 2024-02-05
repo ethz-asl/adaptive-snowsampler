@@ -340,7 +340,7 @@ void AdaptiveSnowSampler::gotoCallback(const std::shared_ptr<planner_msgs::srv::
   double target_position_latitude;
   double target_position_longitude;
   double target_position_altitude;
-  double relative_altitude = 50.0;
+  double relative_altitude = 20.0;
   target_position_lv03.z() = target_position_lv03.z() + relative_altitude;
   GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
                           target_position_latitude, target_position_longitude, target_position_altitude);
