@@ -51,7 +51,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   // Publishers
   // quality of service settings
   rclcpp::QoS latching_qos(1);
-  latching_qos.reliable().transient_local();
+  latching_qos.best_effort().durability_volatile();
   original_map_pub_ = this->create_publisher<grid_map_msgs::msg::GridMap>("elevation_map", latching_qos);
   target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
   target_slope_pub_ = this->create_publisher<std_msgs::msg::Float64>("target_slope", 1);

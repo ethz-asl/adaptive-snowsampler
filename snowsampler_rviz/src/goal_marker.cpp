@@ -26,7 +26,7 @@ GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node) : node_(node), marker_serve
   menu_handler_.apply(marker_server_, "set_pose");
   marker_server_.applyChanges();
   rclcpp::QoS latching_qos(1);
-  latching_qos.reliable().transient_local();
+  latching_qos.best_effort().durability_volatile();
   grid_map_sub_ = node_->create_subscription<grid_map_msgs::msg::GridMap>(
       "/elevation_map", latching_qos, std::bind(&GoalMarker::GridmapCallback, this, _1));
 }
