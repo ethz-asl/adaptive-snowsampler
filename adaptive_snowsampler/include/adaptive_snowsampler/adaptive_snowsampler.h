@@ -56,8 +56,8 @@
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
 
@@ -115,14 +115,40 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
 
+  void publishSetpointPosition(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+                               const Eigen::Vector3d &position);
+
   void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
                               std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
   void loadMap();
   void publishMap();
 
+  /**
+   * @brief Convert 3D vector into arrow marker
+   * 
+   * @param position  position of the root of the arrow
+   * @param normal  arrow vector from the root position
+   * @param id  marker id
+   * @param color  color of the marker
+   * @param marker_namespace 
+   * @return visualization_msgs::msg::Marker 
+   */
   visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
                                                    int id, Eigen::Vector3d color,
                                                    const std::string marker_namespace = "arrow");
+  /**
+   * @brief Convert 3D vector into arrow marker
+   * 
+   * @param position 
+   * @param normal 
+   * @param id 
+   * @param color 
+   * @param marker_namespace 
+   * @return visualization_msgs::msg::Marker 
+   */
+  visualization_msgs::msg::Marker position2SphereMsg(const Eigen::Vector3d &position,
+                                                   int id, Eigen::Vector3d color,
+                                                   const std::string marker_namespace = "sphere");
   geometry_msgs::msg::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
                                                           const Eigen::Vector4d orientation);
 
@@ -131,6 +157,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr setpoint_position_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_slope_pub_;
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
@@ -160,10 +187,12 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   // Planner states
   Eigen::Vector3d target_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d target_normal_{Eigen::Vector3d(0.0, 0.0, 1.0)};
+  Eigen::Vector3d setpoint_positon_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   double target_heading_{0.0};
   double target_slope_{0.0};
+  double relative_altitude_ = 20.0;
 
   std::shared_ptr<GridMapGeo> map_;
   std::shared_ptr<GeographicLib::Geoid> egm96_5;

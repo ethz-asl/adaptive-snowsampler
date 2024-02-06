@@ -10,12 +10,12 @@
 #include <rviz_common/panel.hpp>
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "std_msgs/msg/float64.hpp"
 #include "mav_msgs/conversions.hpp"
 #include "mav_msgs/eigen_mav_msgs.hpp"
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
+#include "std_msgs/msg/float64.hpp"
 #endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };

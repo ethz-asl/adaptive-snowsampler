@@ -21,15 +21,14 @@
 #include <planner_msgs/srv/set_service.hpp>
 #include <planner_msgs/srv/set_string.hpp>
 #include <planner_msgs/srv/set_vector3.hpp>
-#include <std_msgs/msg/float64.hpp>
 #include <rviz_common/visualization_manager.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <std_srvs/srv/empty.hpp>
 
+#include "snowsampler_msgs/srv/set_angle.hpp"
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
-
-#include "snowsampler_msgs/srv/set_angle.hpp"
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -37,24 +36,22 @@ using namespace std::chrono_literals;
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent) : rviz_common::Panel(parent) {
-  
   node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
-  
 }
 
 void PlanningPanel::onInitialize() {
   node_ = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   createLayout();
-  RCLCPP_INFO_STREAM(node_->get_logger(),"Creating Planner Mode Group");
+  RCLCPP_INFO_STREAM(node_->get_logger(), "Creating Planner Mode Group");
   goal_marker_ = std::make_shared<GoalMarker>(node_);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1, std::bind(&PlanningPanel::plannerstateCallback, this, _1));
-  
+
   leg_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
-    "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
+      "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
   target_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
-    "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
-  RCLCPP_INFO_STREAM(node_->get_logger(),"Subscribers Created");
+      "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
+  RCLCPP_INFO_STREAM(node_->get_logger(), "Subscribers Created");
 }
 
 void PlanningPanel::createLayout() {
@@ -63,7 +60,7 @@ void PlanningPanel::createLayout() {
   // Planner services and publications.
   service_layout->addWidget(createPlannerModeGroup(), 0, 0, 4, 1);
   // log something
-  
+
   service_layout->addWidget(createLegControlGroup(), 4, 0, 4, 2);
 
   // First the names, then the start/goal, then service buttons.
@@ -753,8 +750,7 @@ void PlanningPanel::callSetAngleService(double angle) {
   auto request = std::make_shared<snowsampler_msgs::srv::SetAngle::Request>();
   request->angle = angle;
 
-  using ServiceResponseFuture = 
-      rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+  using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
 
   auto response_received_callback = [this](ServiceResponseFuture future) {
     auto result = future.get();
