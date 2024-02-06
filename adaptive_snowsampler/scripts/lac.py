@@ -75,12 +75,12 @@ class LAC:
 
 		# These magic numbers were gleefully stolen from the PyUSB tutorial
 		# TODO: is there a better way to ensure data is fully sent than sleeping for 50ms?
-		self.device.write(1, data, 100)
+		self.device.write(1, data, 1000)
 		sleep(.05)
 
 		# Three bytes per packet
 		# I assume the 0x81 and 100 here also came from the PyUSB tutorial, but I never actually wrote that down...
-		response = self.device.read(0x81, 3, 100)
+		response = self.device.read(0x81, 3, 1000)
 
 		# Just as before, the bytes are separated, so here they're put back together as one integer
 		return response[0], (response[2] << 8) + response[1]

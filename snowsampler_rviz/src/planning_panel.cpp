@@ -36,20 +36,20 @@ using namespace std::chrono_literals;
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent) : rviz_common::Panel(parent) {
+  createLayout();
   node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
 }
 
 void PlanningPanel::onInitialize() {
-  node_ = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-  createLayout();
-  RCLCPP_INFO_STREAM(node_->get_logger(), "Creating Planner Mode Group");
-  goal_marker_ = std::make_shared<GoalMarker>(node_);
+  auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  RCLCPP_INFO_STREAM(node_->get_logger(),"Creating Planner Mode Group");
+  goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1, std::bind(&PlanningPanel::plannerstateCallback, this, _1));
 
-  leg_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+  leg_angle_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
       "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
-  target_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
+  target_angle_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
       "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
   RCLCPP_INFO_STREAM(node_->get_logger(), "Subscribers Created");
 }
