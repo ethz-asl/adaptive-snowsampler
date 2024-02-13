@@ -337,8 +337,11 @@ void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::sr
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_TAKEOFF;
-  msg.param7 = vehicle_position_.z() + 50.0;
-  RCLCPP_INFO_STREAM(get_logger(), "Vehicle commanded altitude: " << vehicle_position_.z() + 50.0);
+  msg.param1 = -1;
+  msg.param5 = NAN;
+  msg.param6 = NAN;
+  msg.param7 = vehicle_position_.z() + relative_altitude_;
+  RCLCPP_INFO_STREAM(get_logger(), "Vehicle commanded altitude: " << vehicle_position_.z() + relative_altitude_);
   msg.target_system = 1;
   msg.target_component = 1;
   msg.source_system = 1;
