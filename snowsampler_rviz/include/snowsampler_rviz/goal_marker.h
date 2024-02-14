@@ -50,6 +50,7 @@ class GoalMarker {
   Eigen::Vector3d goal_pos_{Eigen::Vector3d::Zero()};
   grid_map::GridMap map_;
   std::mutex goal_mutex_;
+  double relative_altitude_{20.0};
 };
 
 #endif  // snowsampler_rviz_GOAL_MARKER_H_

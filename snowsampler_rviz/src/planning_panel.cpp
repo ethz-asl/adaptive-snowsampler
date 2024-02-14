@@ -42,7 +42,7 @@ PlanningPanel::PlanningPanel(QWidget* parent) : rviz_common::Panel(parent) {
 
 void PlanningPanel::onInitialize() {
   auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-  RCLCPP_INFO_STREAM(node_->get_logger(),"Creating Planner Mode Group");
+  RCLCPP_INFO_STREAM(node_->get_logger(), "Creating Planner Mode Group");
   goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1, std::bind(&PlanningPanel::plannerstateCallback, this, _1));
@@ -533,9 +533,7 @@ void PlanningPanel::setPlannerModeServiceTakeoff() { callSetPlannerStateService(
 
 void PlanningPanel::setPlannerModeServiceGoTo() { callSetPlannerStateService("/adaptive_sampler/goto", 4); }
 
-void PlanningPanel::setPlannerModeServiceReturn() {
-  callSetPlannerStateService("/adaptive_sampler/set_planner_state", 5);
-}
+void PlanningPanel::setPlannerModeServiceReturn() { callSetPlannerStateService("/adaptive_sampler/return", 3); }
 
 void PlanningPanel::setPlannerModeServiceLand() { callSetPlannerStateService("/adaptive_sampler/land", 3); }
 

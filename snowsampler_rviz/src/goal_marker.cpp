@@ -11,7 +11,7 @@ GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node) : node_(node), marker_serve
 
   set_goal_marker_.header.frame_id = "map";
   set_goal_marker_.name = "set_pose";
-  set_goal_marker_.scale = 100.0;
+  set_goal_marker_.scale = 20.0;
   set_goal_marker_.controls.clear();
 
   // Set up controls: x, y, z, and yaw.
@@ -41,10 +41,10 @@ void GoalMarker::processSetPoseFeedback(
     Eigen::Vector2d marker_position_2d(set_goal_marker_.pose.position.x, set_goal_marker_.pose.position.y);
     if (map_.isInside(marker_position_2d)) {
       double elevation = map_.atPosition("elevation", marker_position_2d);
-      set_goal_marker_.pose.position.z = elevation + 200.0;
+      set_goal_marker_.pose.position.z = elevation + relative_altitude_;
       marker_server_.setPose(set_goal_marker_.name, set_goal_marker_.pose);
       goal_pos_ = toEigen(feedback->pose);
-      goal_pos_(2) = elevation + 100.0;
+      goal_pos_(2) = elevation;
     }
   }
   marker_server_.applyChanges();
@@ -58,9 +58,9 @@ void GoalMarker::GridmapCallback(const grid_map_msgs::msg::GridMap &msg) {
     // set_goal_marker_.pose.position.z
     double elevation = map_.atPosition("elevation", marker_position_2d);
     if (elevation + 200.0 > set_goal_marker_.pose.position.z) {
-      set_goal_marker_.pose.position.z = elevation + 200.0;
+      set_goal_marker_.pose.position.z = elevation + relative_altitude_;
       marker_server_.setPose(set_goal_marker_.name, set_goal_marker_.pose);
-      goal_pos_(2) = elevation + 100.0;
+      goal_pos_(2) = elevation;
     }
   }
   marker_server_.applyChanges();
@@ -80,11 +80,11 @@ visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMovePlaneContr
 
 visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMenuControl() {
   visualization_msgs::msg::Marker marker;
-  double scale = 100.0;
+  double scale = 10.0;
   marker.type = visualization_msgs::msg::Marker::SPHERE;
-  marker.scale.x = scale * 0.45;
-  marker.scale.y = scale * 0.45;
-  marker.scale.z = scale * 0.45;
+  marker.scale.x = scale;
+  marker.scale.y = scale;
+  marker.scale.z = scale;
   marker.color.r = 0.0;
   marker.color.g = 1.0;
   marker.color.b = 0.0;
@@ -102,7 +102,8 @@ visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMenuControl() 
 void GoalMarker::initializeMenu() {
   using namespace std::placeholders;
 
-  menu_handler_first_entry_ = menu_handler_.insert("Set as Start", std::bind(&GoalMarker::setStartCallback, this, _1));
+  menu_handler_first_entry_ =
+      menu_handler_.insert("Set Vehicle Position as Home", std::bind(&GoalMarker::setStartCallback, this, _1));
 
   menu_handler_.insert("Set as Goal", std::bind(&GoalMarker::setGoalCallback, this, _1));
 }

@@ -112,11 +112,15 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void gotoCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                     std::shared_ptr<planner_msgs::srv::SetService::Response> response);
 
+  void returnCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                      std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
 
   void publishSetpointPosition(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
-                               const Eigen::Vector3d &position);
+                               const Eigen::Vector3d &position,
+                               const Eigen::Vector3d color = Eigen::Vector3d(1.0, 1.0, 0.0));
 
   void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
                               std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
@@ -125,30 +129,29 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   /**
    * @brief Convert 3D vector into arrow marker
-   * 
+   *
    * @param position  position of the root of the arrow
    * @param normal  arrow vector from the root position
    * @param id  marker id
    * @param color  color of the marker
-   * @param marker_namespace 
-   * @return visualization_msgs::msg::Marker 
+   * @param marker_namespace
+   * @return visualization_msgs::msg::Marker
    */
   visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
                                                    int id, Eigen::Vector3d color,
                                                    const std::string marker_namespace = "arrow");
   /**
    * @brief Convert 3D vector into arrow marker
-   * 
-   * @param position 
-   * @param normal 
-   * @param id 
-   * @param color 
-   * @param marker_namespace 
-   * @return visualization_msgs::msg::Marker 
+   *
+   * @param position
+   * @param normal
+   * @param id
+   * @param color
+   * @param marker_namespace
+   * @return visualization_msgs::msg::Marker
    */
-  visualization_msgs::msg::Marker position2SphereMsg(const Eigen::Vector3d &position,
-                                                   int id, Eigen::Vector3d color,
-                                                   const std::string marker_namespace = "sphere");
+  visualization_msgs::msg::Marker position2SphereMsg(const Eigen::Vector3d &position, int id, Eigen::Vector3d color,
+                                                     const std::string marker_namespace = "sphere");
   geometry_msgs::msg::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
                                                           const Eigen::Vector4d orientation);
 
@@ -158,6 +161,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr setpoint_position_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr home_position_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_slope_pub_;
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
@@ -170,6 +174,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr takeoff_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr land_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr goto_serviceserver_;
+  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr return_serviceserver_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;
@@ -189,6 +194,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d target_normal_{Eigen::Vector3d(0.0, 0.0, 1.0)};
   Eigen::Vector3d setpoint_positon_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+  Eigen::Vector3d home_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   double target_heading_{0.0};
   double target_slope_{0.0};

@@ -55,6 +55,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   original_map_pub_ = this->create_publisher<grid_map_msgs::msg::GridMap>("elevation_map", latching_qos);
   target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
   setpoint_position_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("setpoint_position", 1);
+  home_position_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("home_position", 1);
   target_slope_pub_ = this->create_publisher<std_msgs::msg::Float64>("target_slope", 1);
   vehicle_command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>("/fmu/in/vehicle_command", qos_profile);
   referencehistory_pub_ = this->create_publisher<nav_msgs::msg::Path>("reference/path", 1);
@@ -72,7 +73,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
       "/set_goal",
       std::bind(&AdaptiveSnowSampler::goalPositionCallback, this, std::placeholders::_1, std::placeholders::_2));
   setstart_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
-      "set_start",
+      "/set_start",
       std::bind(&AdaptiveSnowSampler::startPositionCallback, this, std::placeholders::_1, std::placeholders::_2));
 
   takeoff_serviceserver_ = this->create_service<planner_msgs::srv::SetService>(
@@ -86,6 +87,10 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   goto_serviceserver_ = this->create_service<planner_msgs::srv::SetService>(
       "/adaptive_sampler/goto",
       std::bind(&AdaptiveSnowSampler::gotoCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+  return_serviceserver_ = this->create_service<planner_msgs::srv::SetService>(
+      "/adaptive_sampler/return",
+      std::bind(&AdaptiveSnowSampler::returnCallback, this, std::placeholders::_1, std::placeholders::_2));
 
   // Setup loop timers
   cmdloop_timer_ = this->create_wall_timer(100ms, std::bind(&AdaptiveSnowSampler::cmdloopCallback, this));
@@ -107,7 +112,8 @@ void AdaptiveSnowSampler::statusloopCallback() {
   }
   publishMap();
   publishSetpointPosition(setpoint_position_pub_, setpoint_positon_);
-  publishTargetNormal(target_normal_pub_, target_position_ + 10.0 * target_normal_, -10.0 * target_normal_);
+  publishSetpointPosition(home_position_pub_, home_position_, Eigen::Vector3d(1.0, 0.0, 0.0));
+  publishTargetNormal(target_normal_pub_, target_position_ + 20.0 * target_normal_, -20.0 * target_normal_);
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
 }
 
@@ -135,8 +141,8 @@ visualization_msgs::msg::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eige
   points.push_back(tail);
 
   marker.points = points;
-  marker.scale.x = 1.0 * std::min(normal.norm(), 1.0);
-  marker.scale.y = 1.0 * std::min(normal.norm(), 2.0);
+  marker.scale.x = 2.0 * std::min(normal.norm(), 1.0);
+  marker.scale.y = 2.0 * std::min(normal.norm(), 2.0);
   marker.scale.z = 0.0;
   marker.color.a = 1.0;
   marker.color.r = color(0);
@@ -145,10 +151,9 @@ visualization_msgs::msg::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eige
   return marker;
 }
 
-visualization_msgs::msg::Marker AdaptiveSnowSampler::position2SphereMsg(const Eigen::Vector3d &position,
-                                                                      int id,
-                                                                      Eigen::Vector3d color,
-                                                                      const std::string marker_namespace) {
+visualization_msgs::msg::Marker AdaptiveSnowSampler::position2SphereMsg(const Eigen::Vector3d &position, int id,
+                                                                        Eigen::Vector3d color,
+                                                                        const std::string marker_namespace) {
   visualization_msgs::msg::Marker marker;
   marker.header.frame_id = "map";
   marker.header.stamp = rclcpp::Clock().now();
@@ -163,16 +168,15 @@ visualization_msgs::msg::Marker AdaptiveSnowSampler::position2SphereMsg(const Ei
   marker.pose.position.x = position.x();
   marker.pose.position.y = position.y();
   marker.pose.position.z = position.z();
-  marker.scale.x = 2.0;
-  marker.scale.y = 2.0;
-  marker.scale.z = 2.0;
+  marker.scale.x = 10.0;
+  marker.scale.y = 10.0;
+  marker.scale.z = 10.0;
   marker.color.a = 1.0;
   marker.color.r = color(0);
   marker.color.g = color(1);
   marker.color.b = color(2);
   return marker;
 }
-
 
 geometry_msgs::msg::PoseStamped AdaptiveSnowSampler::vector3d2PoseStampedMsg(const Eigen::Vector3d position,
                                                                              const Eigen::Vector4d orientation) {
@@ -197,8 +201,8 @@ void AdaptiveSnowSampler::publishTargetNormal(rclcpp::Publisher<visualization_ms
 }
 
 void AdaptiveSnowSampler::publishSetpointPosition(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
-                                                  const Eigen::Vector3d &position) {
-  visualization_msgs::msg::Marker marker = position2SphereMsg(position, 1, Eigen::Vector3d(1.0, 1.0, 0.0));
+                                                  const Eigen::Vector3d &position, const Eigen::Vector3d color) {
+  visualization_msgs::msg::Marker marker = position2SphereMsg(position, 1, color);
   pub->publish(marker);
 }
 
@@ -243,7 +247,7 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAt
   vehicle_attitude.x() = msg.q[1];
   vehicle_attitude.y() = -msg.q[2];
   vehicle_attitude.z() = -msg.q[3];
-  const Eigen::Quaterniond attitude_offset{std::cos(0.5*0.5*M_PI), 0.0, 0.0, std::sin(0.5*0.5*M_PI)};
+  const Eigen::Quaterniond attitude_offset{std::cos(0.5 * 0.5 * M_PI), 0.0, 0.0, std::sin(0.5 * 0.5 * M_PI)};
   vehicle_attitude_ = attitude_offset * vehicle_attitude;
 }
 
@@ -325,9 +329,11 @@ void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msg
 
 void AdaptiveSnowSampler::startPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
                                                 std::shared_ptr<planner_msgs::srv::SetVector3::Response> response) {
-  start_position_.x() = request->vector.x;
-  start_position_.y() = request->vector.y;
-  start_position_.z() = request->vector.z;
+  start_position_.x() = vehicle_position_.x();
+  start_position_.y() = vehicle_position_.y();
+
+  start_position_.z() = map_->getGridMap().atPosition("elevation", start_position_.head(2));
+  home_position_ = start_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
 
   response->success = true;
 }
@@ -386,6 +392,44 @@ void AdaptiveSnowSampler::gotoCallback(const std::shared_ptr<planner_msgs::srv::
   double target_position_altitude;
   target_position_lv03.z() = target_position_lv03.z() + relative_altitude_;
   GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
+                          target_position_latitude, target_position_longitude, target_position_altitude);
+  /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
+  msg.param2 = true;
+  double target_yaw = -target_heading_ - 0.5 * M_PI;
+  while (std::abs(target_yaw) > M_PI) {  // mod2pi
+    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  }
+  msg.param4 = target_yaw;
+  msg.param5 = target_position_latitude;
+  msg.param6 = target_position_longitude;
+  double target_position_amsl =
+      target_position_altitude -
+      GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
+
+  msg.param7 = target_position_amsl;
+
+  vehicle_command_pub_->publish(msg);
+
+  response->success = true;
+}
+
+void AdaptiveSnowSampler::returnCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
+                                         std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
+  px4_msgs::msg::VehicleCommand msg{};
+  msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
+  msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_REPOSITION;
+  msg.target_system = 1;
+  msg.target_component = 1;
+  msg.source_system = 1;
+  msg.source_component = 1;
+  msg.from_external = true;
+
+  /// TODO: transform target position to wgs84 and amsl
+  Eigen::Vector3d home_position_lv03 = home_position_ + map_origin_;
+  double target_position_latitude;
+  double target_position_longitude;
+  double target_position_altitude;
+  GeoConversions::reverse(home_position_lv03.x(), home_position_lv03.y(), home_position_lv03.z(),
                           target_position_latitude, target_position_longitude, target_position_altitude);
   /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   msg.param2 = true;
