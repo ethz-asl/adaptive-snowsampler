@@ -1,0 +1,9 @@
+<launch>
+  <arg name="params" default="$(find-pkg-share ssp_bridge)/params/params.yaml" />
+
+  <node pkg="ssp_bridge" exec="ssp_bridge" name="ssp_bridge_node" output="screen"/>
+
+  <include file="$(find-pkg-share serial_driver)/launch/serial_driver_bridge_node.launch.py">
+    <arg name="params" value="$(var params)" />
+</include>
+</launch>

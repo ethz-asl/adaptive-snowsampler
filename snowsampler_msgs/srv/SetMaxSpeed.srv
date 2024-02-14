@@ -1,0 +1,4 @@
+# SetMaxSpeed.srv
+int8 data
+---
+bool success

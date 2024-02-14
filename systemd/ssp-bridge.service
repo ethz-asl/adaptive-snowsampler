@@ -1,0 +1,12 @@
+[Unit]
+Description=Launch SSP Bridge node as a service
+After=network.target systemd-udevd.service
+
+[Service]
+EnvironmentFile=/home/user/ros2_ws/src/adaptive-snowsampler/systemd/environment.conf
+ExecStart=/bin/bash /home/user/ros2_ws/src/adaptive-snowsampler/systemd/run_ssp_bridge.sh
+User=user
+Group=user
+
+[Install]
+WantedBy=multi-user.target

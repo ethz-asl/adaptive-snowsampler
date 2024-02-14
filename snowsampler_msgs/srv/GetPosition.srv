@@ -1,0 +1,4 @@
+# GetPosition.srv
+---
+float64 position
+bool success

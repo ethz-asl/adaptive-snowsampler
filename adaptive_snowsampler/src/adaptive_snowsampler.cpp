@@ -59,6 +59,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   target_slope_pub_ = this->create_publisher<std_msgs::msg::Float64>("target_slope", 1);
   vehicle_command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>("/fmu/in/vehicle_command", qos_profile);
   referencehistory_pub_ = this->create_publisher<nav_msgs::msg::Path>("reference/path", 1);
+  vehicle_position_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/snowsampler/vehicle_position", 1);
 
   // Subscribers
   vehicle_global_position_sub_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
@@ -115,6 +116,7 @@ void AdaptiveSnowSampler::statusloopCallback() {
   publishSetpointPosition(home_position_pub_, home_position_, Eigen::Vector3d(1.0, 0.0, 0.0));
   publishTargetNormal(target_normal_pub_, target_position_ + 20.0 * target_normal_, -20.0 * target_normal_);
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+  publishVehiclePosition(vehicle_position_pub_, lv03_vehicle_position_);
 }
 
 visualization_msgs::msg::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Vector3d &position,
@@ -260,10 +262,9 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
                                                               (*egm96_5)(vehicle_latitude, vehicle_longitude);  // wgs84
 
   // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << std::endl;
-  Eigen::Vector3d lv03_vehicle_position;
   // LV03 / WGS84 ellipsoid
-  GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude, lv03_vehicle_position.x(),
-                          lv03_vehicle_position.y(), lv03_vehicle_position.z());
+  GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude, lv03_vehicle_position_.x(),
+                          lv03_vehicle_position_.y(), lv03_vehicle_position_.z());
 
   geometry_msgs::msg::TransformStamped t;
   // corresponding tf variables
@@ -273,11 +274,11 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
 
   // Turtle only exists in 2D, thus we get x and y translation
   // coordinates from the message and set the z coordinate to 0
-  t.transform.translation.x = lv03_vehicle_position(0);
-  t.transform.translation.y = lv03_vehicle_position(1);
-  t.transform.translation.z = lv03_vehicle_position(2);
+  t.transform.translation.x = lv03_vehicle_position_(0);
+  t.transform.translation.y = lv03_vehicle_position_(1);
+  t.transform.translation.z = lv03_vehicle_position_(2);
 
-  vehicle_position_ = lv03_vehicle_position - map_origin_;  // AMSL altitude
+  vehicle_position_ = lv03_vehicle_position_ - map_origin_;  // AMSL altitude
 
   // For the same reason, turtle can only rotate around one axis
   // and this why we set rotation in x and y to 0 and obtain
@@ -466,5 +467,14 @@ void AdaptiveSnowSampler::publishPositionHistory(rclcpp::Publisher<nav_msgs::msg
   msg.header.frame_id = "map";
   msg.poses = history_vector;
 
+  pub->publish(msg);
+}
+
+void AdaptiveSnowSampler::publishVehiclePosition(rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub,
+                                                 const Eigen::Vector3d &position) {
+  geometry_msgs::msg::Vector3 msg;
+  msg.x = position.x();
+  msg.y = position.y();
+  msg.z = position.z();
   pub->publish(msg);
 }

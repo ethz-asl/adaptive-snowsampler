@@ -12,6 +12,7 @@ git clone https://github.com/PX4/px4_msgs.git
 git clone https://github.com/ethz-asl/grid_map_geo.git
 git clone https://github.com/ethz-asl/mav_comm.git -b ros2
 git clone https://github.com/ethz-asl/terrain-navigation.git -b ros2
+git clone https://github.com/ros-drivers/transport_drivers.git
 cd ..
 sudo rosdep init
 rosdep update

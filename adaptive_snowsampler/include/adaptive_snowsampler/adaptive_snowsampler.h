@@ -124,6 +124,10 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
                               std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
+
+  void publishVehiclePosition(rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub,
+                              const Eigen::Vector3d &position);
+
   void loadMap();
   void publishMap();
 
@@ -165,6 +169,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_slope_pub_;
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr vehicle_position_pub_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
   rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr vehicle_global_position_sub_;
@@ -180,6 +185,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;
 
   Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+  Eigen::Vector3d lv03_vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d map_origin_{Eigen::Vector3d{0.0, 0.0, 0.0}};
   std::vector<geometry_msgs::msg::PoseStamped> positionhistory_vector_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
