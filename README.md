@@ -2,6 +2,10 @@
 
 ![simplescreenrecorder-2024-01-22_15 43 08-ezgif com-video-to-gif-converter](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/assets/5248102/66a692aa-e3e2-44a6-bdb5-1abd35ce0e69)
 
+## Depencencies:
+- [eProsima DDS-Router](https://eprosima-dds-router.readthedocs.io/en/latest/rst/developer_manual/installation/sources/linux.html#developer-manual-installation-sources-linux)
+- [transport_drivers](https://github.com/ros-drivers/transport_drivers/tree/main)
+
 ## Installation
 ```
 cd ~

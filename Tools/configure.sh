@@ -25,4 +25,4 @@ systemctl enable ssp-bridge.service
 
 sudo systemctl start adaptive-snowsampler.service
 sudo systemctl start microxrce_agent.service
-sudo systemctl start ss-bridge.service
+sudo systemctl start ssp-bridge.service
