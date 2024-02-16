@@ -56,6 +56,7 @@
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "snowsampler_msgs/srv/set_angle.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "tf2_ros/transform_broadcaster.h"
@@ -114,6 +115,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   void returnCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                       std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+
+  void callSetAngleService(double angle);
 
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
@@ -204,8 +207,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   double target_heading_{0.0};
   double target_slope_{0.0};
+  const float neutral_angle_ = 35;
   double relative_altitude_ = 20.0;
-
   std::shared_ptr<GridMapGeo> map_;
   std::shared_ptr<GeographicLib::Geoid> egm96_5;
 };

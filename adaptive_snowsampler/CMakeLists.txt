@@ -44,7 +44,7 @@ include_directories(
 add_executable(adaptive_snowsampler
   src/main.cpp
   src/adaptive_snowsampler.cpp)
-ament_target_dependencies(adaptive_snowsampler rclcpp std_msgs geometry_msgs px4_msgs tf2 tf2_ros grid_map_core grid_map_ros grid_map_geo visualization_msgs)
+ament_target_dependencies(adaptive_snowsampler snowsampler_msgs rclcpp std_msgs geometry_msgs px4_msgs tf2 tf2_ros grid_map_core grid_map_ros grid_map_geo visualization_msgs)
 target_include_directories(adaptive_snowsampler PUBLIC "${Eigen3_INCLUDE_DIRS}")
 target_link_libraries(adaptive_snowsampler ${planner_msgs_TARGETS} ${GeographicLib_LIBRARIES})
 

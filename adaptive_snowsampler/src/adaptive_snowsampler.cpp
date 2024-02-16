@@ -361,6 +361,7 @@ void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::sr
 
 void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                                        std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
+  callSetAngleService(target_slope_);  // Set the landing leg angle to match the slope
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_LAND;
@@ -377,6 +378,7 @@ void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::
 
 void AdaptiveSnowSampler::gotoCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                                        std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
+  callSetAngleService(neutral_angle_);  // Set the landing leg angle to the neutral angle
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_REPOSITION;
@@ -468,6 +470,19 @@ void AdaptiveSnowSampler::publishPositionHistory(rclcpp::Publisher<nav_msgs::msg
   msg.poses = history_vector;
 
   pub->publish(msg);
+}
+
+void AdaptiveSnowSampler::callSetAngleService(double angle) {
+  RCLCPP_INFO_ONCE(this->get_logger(), "Calling service");
+  auto client = this->create_client<snowsampler_msgs::srv::SetAngle>("snowsampler/set_landing_leg_angle");
+  auto request = std::make_shared<snowsampler_msgs::srv::SetAngle::Request>();
+  request->angle = angle;
+  using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+  auto response_received_callback = [this](ServiceResponseFuture future) {
+    auto result = future.get();
+    RCLCPP_INFO_ONCE(this->get_logger(), "Service response: %s", result->success ? "true" : "false");
+  };
+  auto result_future = client->async_send_request(request);
 }
 
 void AdaptiveSnowSampler::publishVehiclePosition(rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub,
