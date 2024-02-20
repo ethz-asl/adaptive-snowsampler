@@ -129,12 +129,12 @@ void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray &msg) {
         out_str.substr(state_pos + 7, position_pos - state_pos - 9);  // -9 to remove ", Position: " part
     std::string position_str = out_str.substr(position_pos + 10);     // +10 to remove "Position: " part
 
-    int state_num = std::stoi(state_str);
-    double position = std::stod(position_str);
-    RCLCPP_DEBUG_STREAM(get_logger(), "state_: " << state_num);
-    RCLCPP_DEBUG_STREAM(get_logger(), "position_: " << position);
-
-    if (state_num >= 0 && state_num <= 3) {
+    if (!position_str.empty() && position_str.find_first_not_of("0123456789.") == std::string::npos) {
+      int state_num = std::stoi(state_str);
+      double position = std::stod(position_str);
+      RCLCPP_DEBUG_STREAM(get_logger(), "state_: " << state_num);
+      RCLCPP_DEBUG_STREAM(get_logger(), "position_: " << position);
+      if (state_num >= 0 && state_num <= 3) {
       state_ = static_cast<SSPState>(state_num);
       position_ = position;
 
@@ -145,6 +145,7 @@ void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray &msg) {
       std_msgs::msg::Float64 position_msg;
       position_msg.data = position_;
       position_publisher_->publish(position_msg);
+    }
     }
   }
 }
