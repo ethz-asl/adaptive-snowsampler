@@ -35,7 +35,10 @@ using namespace std::chrono_literals;
 
 namespace snowsampler_rviz {
 
-PlanningPanel::PlanningPanel(QWidget* parent) : rviz_common::Panel(parent) {
+PlanningPanel::PlanningPanel(QWidget* parent)
+    : rviz_common::Panel(parent),
+      tf_buffer_(std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME)),
+      tf_listener_(std::make_shared<tf2_ros::TransformListener>(tf_buffer_)) {
   createLayout();
   node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
 }
@@ -86,7 +89,6 @@ QGroupBox* PlanningPanel::createLegControlGroup() {
   service_layout->addWidget(angle_input_, 0, 1, 1, 1);
   service_layout->addWidget(new QLabel("Current Angle: "), 0, 2, 1, 1);
   service_layout->addWidget(current_angle_label_, 0, 3, 1, 1);
-
   service_layout->addWidget(new QLabel("Target Angle: "), 1, 2, 1, 1);
   service_layout->addWidget(target_angle_label_, 1, 3, 1, 1);
   groupBox->setLayout(service_layout);
@@ -101,16 +103,45 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   set_planner_state_buttons_.push_back(new QPushButton("GOTO TARGET"));
   set_planner_state_buttons_.push_back(new QPushButton("RETURN"));
 
+  QLineEdit* goal_x_input_ = new QLineEdit();
+  goal_x_input_->setPlaceholderText("Easting");
+  QLineEdit* goal_y_input_ = new QLineEdit();
+  goal_y_input_->setPlaceholderText("Northing");
+  QPushButton* set_goal_button_ = new QPushButton("SET GOAL");
+
   service_layout->addWidget(set_planner_state_buttons_[0], 0, 0, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[1], 0, 1, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[3], 0, 2, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[2], 0, 3, 1, 1);
+  service_layout->addWidget(goal_x_input_, 1, 0, 1, 2);
+  service_layout->addWidget(goal_y_input_, 1, 2, 1, 2);
+  service_layout->addWidget(set_goal_button_, 2, 0, 1, 4);
+
   groupBox->setLayout(service_layout);
 
   connect(set_planner_state_buttons_[0], SIGNAL(released()), this, SLOT(setPlannerModeServiceTakeoff()));
   connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
+
+  connect(set_goal_button_, &QPushButton::clicked, [this, goal_x_input_, goal_y_input_]() {
+    bool ok_x, ok_y;
+    double x_ch1903 = goal_x_input_->text().toDouble(&ok_x);
+    double y_ch1903 = goal_y_input_->text().toDouble(&ok_y);
+    // transform CH1903 to map frame
+    geometry_msgs::msg::TransformStamped ch1903_to_map_transform;
+    if (ok_x && ok_y && getCH1903ToMapTransform(ch1903_to_map_transform)) {
+      // transforms are already in negative direction so add instead of subtract
+      double x = x_ch1903 + ch1903_to_map_transform.transform.translation.x;
+      double y = y_ch1903 + ch1903_to_map_transform.transform.translation.y;
+
+      goal_marker_->setGoalPosition(Eigen::Vector2d(x, y));
+      RCLCPP_INFO(node_->get_logger(), "Goal position set to: %f, %f", x_ch1903, y_ch1903);
+    } else {
+      RCLCPP_ERROR(node_->get_logger(), "Invalid input for goal coordinates.");
+    }
+  });
+
   return groupBox;
 }
 
@@ -756,6 +787,15 @@ void PlanningPanel::callSetAngleService(double angle) {
   };
 
   auto result_future = client->async_send_request(request, response_received_callback);
+}
+bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform) {
+  try {
+    transform = tf_buffer_.lookupTransform("map", "CH1903", tf2::TimePointZero);
+    return true;
+  } catch (tf2::TransformException& ex) {
+    RCLCPP_ERROR(node_->get_logger(), "Could not get CH1903 to map transform: %s", ex.what());
+    return false;
+  }
 }
 }  // namespace snowsampler_rviz
 

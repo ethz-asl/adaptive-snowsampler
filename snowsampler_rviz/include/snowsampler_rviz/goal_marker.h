@@ -19,6 +19,7 @@ class GoalMarker {
   GoalMarker(rclcpp::Node::SharedPtr node);
   virtual ~GoalMarker();
   Eigen::Vector3d getGoalPosition() { return goal_pos_; };
+  void setGoalPosition(const Eigen::Vector2d &position);
 
  private:
   Eigen::Vector3d toEigen(const geometry_msgs::msg::Pose &p) {

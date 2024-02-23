@@ -2,6 +2,10 @@
 #define snowsampler_rviz_PLANNING_PANEL_H_
 
 #ifndef Q_MOC_RUN
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+
 #include <QGroupBox>
 #include <QLabel>
 #include <nav_msgs/msg/odometry.hpp>
@@ -16,6 +20,7 @@
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
 #include "std_msgs/msg/float64.hpp"
+
 #endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
@@ -89,6 +94,8 @@ class PlanningPanel : public rviz_common::Panel {
   void setPlanningBudget(const QString& new_planning_budget);
   void setMaxAltitudeConstrant(bool set_constraint);
   void callSetPlannerStateService(std::string service_name, const int mode);
+  bool getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform);
+
   QGroupBox* createPlannerModeGroup();
   QGroupBox* createLegControlGroup();
   QGroupBox* createPlannerCommandGroup();
@@ -142,6 +149,10 @@ class PlanningPanel : public rviz_common::Panel {
 
   // Other state:
   std::string currently_editing_;
+
+  // tf2 stuff:
+  tf2_ros::Buffer tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 }  // end namespace snowsampler_rviz

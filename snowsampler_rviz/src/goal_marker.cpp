@@ -33,6 +33,27 @@ GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node) : node_(node), marker_serve
 
 GoalMarker::~GoalMarker() = default;
 
+void GoalMarker::setGoalPosition(const Eigen::Vector2d &position) {
+  const std::lock_guard<std::mutex> lock(goal_mutex_);
+  goal_pos_(0) = position(0);
+  goal_pos_(1) = position(1);
+  if (map_.isInside(position)) {
+    double elevation = map_.atPosition("elevation", position);
+    // Update the marker's pose based on the manually set position and elevation
+    set_goal_marker_.pose.position.x = position(0);
+    set_goal_marker_.pose.position.y = position(1);
+    set_goal_marker_.pose.position.z = elevation + relative_altitude_;
+    marker_server_.setPose(set_goal_marker_.name, set_goal_marker_.pose);
+    goal_pos_(2) = elevation;
+  }
+  marker_server_.applyChanges();
+  // call the planner service to set the goal
+  callPlannerService("/set_goal", goal_pos_);
+
+  menu_handler_.reApply(marker_server_);
+  marker_server_.applyChanges();
+}
+
 void GoalMarker::processSetPoseFeedback(
     const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
   const std::lock_guard<std::mutex> lock(goal_mutex_);
