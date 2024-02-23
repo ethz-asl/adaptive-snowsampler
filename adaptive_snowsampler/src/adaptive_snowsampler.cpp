@@ -311,9 +311,8 @@ void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::msg::DistanceSe
   lidar_distance_ = msg.current_distance;
 }
 
-void AdaptiveSnowSampler::takeMeasurementCallback(
-    const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
-    snowsampler_msgs::srv::Trigger::Response::SharedPtr response) {
+void AdaptiveSnowSampler::takeMeasurementCallback(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
+                                                  snowsampler_msgs::srv::Trigger::Response::SharedPtr response) {
   double ground_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
   double drone_elevation = vehicle_position_.z();
   snow_depth_ = drone_elevation - ground_elevation - lidar_distance_;

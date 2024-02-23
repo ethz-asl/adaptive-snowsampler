@@ -16,6 +16,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "mav_msgs/conversions.hpp"
 #include "mav_msgs/eigen_mav_msgs.hpp"
+#include "snowsampler_msgs/srv/trigger.hpp"
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
@@ -60,7 +61,7 @@ class PlanningPanel : public rviz_common::Panel {
   void plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg);
   void legAngleCallback(const std_msgs::msg::Float64& msg);
   void targetAngleCallback(const std_msgs::msg::Float64& msg);
-
+  void snowDepthCallback(const std_msgs::msg::Float64& msg);
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
   void updatePlanningBudget();
@@ -85,6 +86,8 @@ class PlanningPanel : public rviz_common::Panel {
   void setPlannerModeServiceLand();
   void setPlannerModeServiceGoTo();
   void setPlannerModeServiceReturn();
+  void callTakeMeasurementService();
+  void callStopMeasurementService();
 
  protected:
   // Set up the layout, only called by the constructor.
@@ -94,6 +97,8 @@ class PlanningPanel : public rviz_common::Panel {
   void setPlanningBudget(const QString& new_planning_budget);
   void setMaxAltitudeConstrant(bool set_constraint);
   void callSetPlannerStateService(std::string service_name, const int mode);
+  void callSspService(std::string service_name);
+
   bool getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform);
 
   QGroupBox* createPlannerModeGroup();
@@ -108,6 +113,7 @@ class PlanningPanel : public rviz_common::Panel {
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr target_angle_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<planner_msgs::msg::NavigationStatus>::SharedPtr planner_state_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr snow_depth_subscriber_;
 
   std::shared_ptr<GoalMarker> goal_marker_;
 
@@ -117,8 +123,11 @@ class PlanningPanel : public rviz_common::Panel {
   QLineEdit* planning_budget_editor_;
   QLabel* current_angle_label_;
   QLabel* target_angle_label_;
+  QLabel* snow_depth_label_;
   QLineEdit* angle_input_;
   QPushButton* set_leg_angle_button_;
+  QPushButton* take_measurement_button_;
+  QPushButton* stop_measurement_button_;
   QCheckBox* terrain_align_checkbox_;
   PoseWidget* start_pose_widget_;
   PoseWidget* goal_pose_widget_;

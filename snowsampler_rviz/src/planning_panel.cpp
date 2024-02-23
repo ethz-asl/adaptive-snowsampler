@@ -26,6 +26,7 @@
 #include <std_srvs/srv/empty.hpp>
 
 #include "snowsampler_msgs/srv/set_angle.hpp"
+#include "snowsampler_msgs/srv/trigger.hpp"
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
@@ -54,6 +55,8 @@ void PlanningPanel::onInitialize() {
       "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
   target_angle_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
       "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
+  snow_depth_subscriber_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
+      "/snow_depth", 1, std::bind(&PlanningPanel::snowDepthCallback, this, _1));
   RCLCPP_INFO_STREAM(node_->get_logger(), "Subscribers Created");
 }
 
@@ -103,6 +106,10 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   set_planner_state_buttons_.push_back(new QPushButton("GOTO TARGET"));
   set_planner_state_buttons_.push_back(new QPushButton("RETURN"));
 
+  take_measurement_button_ = new QPushButton("Take Measurement");
+  stop_measurement_button_ = new QPushButton("Stop Measurement");
+  snow_depth_label_ = new QLabel("Snow Depth: ");
+
   QLineEdit* goal_x_input_ = new QLineEdit();
   goal_x_input_->setPlaceholderText("Easting");
   QLineEdit* goal_y_input_ = new QLineEdit();
@@ -113,9 +120,12 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   service_layout->addWidget(set_planner_state_buttons_[1], 0, 1, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[3], 0, 2, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[2], 0, 3, 1, 1);
-  service_layout->addWidget(goal_x_input_, 1, 0, 1, 2);
-  service_layout->addWidget(goal_y_input_, 1, 2, 1, 2);
-  service_layout->addWidget(set_goal_button_, 2, 0, 1, 4);
+  service_layout->addWidget(take_measurement_button_, 1, 0, 1, 1);
+  service_layout->addWidget(stop_measurement_button_, 1, 1, 1, 1);
+  service_layout->addWidget(snow_depth_label_, 1, 2, 1, 2);
+  service_layout->addWidget(goal_x_input_, 2, 0, 1, 2);
+  service_layout->addWidget(goal_y_input_, 2, 2, 1, 2);
+  service_layout->addWidget(set_goal_button_, 3, 0, 1, 4);
 
   groupBox->setLayout(service_layout);
 
@@ -123,6 +133,9 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
+
+  connect(take_measurement_button_, &QPushButton::released, this, &PlanningPanel::callTakeMeasurementService);
+  connect(stop_measurement_button_, &QPushButton::released, this, &PlanningPanel::callStopMeasurementService);
 
   connect(set_goal_button_, &QPushButton::clicked, [this, goal_x_input_, goal_y_input_]() {
     bool ok_x, ok_y;
@@ -597,6 +610,31 @@ void PlanningPanel::callSetPlannerStateService(std::string service_name, const i
   t.detach();
 }
 
+void PlanningPanel::callTakeMeasurementService() { callSspService("/adaptive_sampler/take_measurement"); }
+
+void PlanningPanel::callStopMeasurementService() { callSspService("/SSP/stop_measurement"); }
+
+// TODO: this could be combined with callSetPlannerStateService through templating
+void PlanningPanel::callSspService(std::string service_name) {
+  std::thread t([this, service_name] {
+    auto client = node_->create_client<snowsampler_msgs::srv::Trigger>(service_name);
+    if (!client->wait_for_service(1s)) {
+      RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
+      return;
+    }
+
+    auto req = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
+
+    auto result = client->async_send_request(req);
+
+    if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS) {
+      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service [" << client->get_service_name() << "] failed.");
+      return;
+    }
+  });
+  t.detach();
+}
+
 void PlanningPanel::setStartService() {
   std::string service_name = "/terrain_planner/set_start";
   Eigen::Vector3d goal_pos = goal_marker_->getGoalPosition();
@@ -733,6 +771,11 @@ void PlanningPanel::targetAngleCallback(const std_msgs::msg::Float64& msg) {
   target_angle_label_->setText(QString::number(msg.data) + " deg");
 }
 
+void PlanningPanel::snowDepthCallback(const std_msgs::msg::Float64& msg) {
+  QString depth = QString::number(msg.data, 'f', 2);
+  snow_depth_label_->setText("Snow Depth: " + depth + " m");
+}
+
 void PlanningPanel::plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg) {
   switch (msg.state) {
     case PLANNER_STATE::HOLD: {
@@ -788,6 +831,7 @@ void PlanningPanel::callSetAngleService(double angle) {
 
   auto result_future = client->async_send_request(request, response_received_callback);
 }
+
 bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform) {
   try {
     transform = tf_buffer_.lookupTransform("map", "CH1903", tf2::TimePointZero);
