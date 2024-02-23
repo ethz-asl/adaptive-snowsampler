@@ -1,0 +1,4 @@
+# Trigger.srv
+int8 id
+---
+bool success

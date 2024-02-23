@@ -8,9 +8,9 @@
 #include "GeographicLib/Geoid.hpp"
 #include "geo_conversions.h"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/vector3.hpp"
 #include "snowsampler_msgs/srv/get_position.hpp"
 #include "snowsampler_msgs/srv/set_max_speed.hpp"
+#include "snowsampler_msgs/srv/take_measurement.hpp"
 #include "snowsampler_msgs/srv/trigger.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/int8.hpp"
@@ -23,10 +23,7 @@ class SSPBridge : public rclcpp::Node {
   SSPBridge();
 
  private:
-  Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
-
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr serial_subscriber_;
-  rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr vehicle_position_sub_;
 
   rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr serial_publisher_;
   rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr state_publisher_;
@@ -36,10 +33,8 @@ class SSPBridge : public rclcpp::Node {
 
   void serial_callback(const std_msgs::msg::UInt8MultiArray &msg);
 
-  void vehiclePositionCallback(const geometry_msgs::msg::Vector3 &msg);
-
-  void take_measurement_service(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
-                                snowsampler_msgs::srv::Trigger::Response::SharedPtr response);
+  void take_measurement_service(const snowsampler_msgs::srv::TakeMeasurement::Request::SharedPtr request,
+                                snowsampler_msgs::srv::TakeMeasurement::Response::SharedPtr response);
 
   void stop_measurement_service(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
                                 snowsampler_msgs::srv::Trigger::Response::SharedPtr response);
@@ -57,13 +52,9 @@ class SSPBridge : public rclcpp::Node {
   SSPState state_;
   double position_;
 
-  rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr srv_take_measurement_;
+  rclcpp::Service<snowsampler_msgs::srv::TakeMeasurement>::SharedPtr srv_take_measurement_;
   rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr srv_stop_measurement_;
   rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr srv_go_home_;
   rclcpp::Service<snowsampler_msgs::srv::GetPosition>::SharedPtr srv_get_position_;
   rclcpp::Service<snowsampler_msgs::srv::SetMaxSpeed>::SharedPtr srv_set_max_speed_;
-
-  int log_id_ = 1;
-  std::ofstream logfile_;
-  std::string logfilePath_;
 };  // class SSPBridge

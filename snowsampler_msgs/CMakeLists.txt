@@ -10,6 +10,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   srv/SetAngle.srv
   srv/SetMaxSpeed.srv
   srv/GetPosition.srv
+  srv/TakeMeasurement.srv
 )
 
 ament_export_dependencies(rosidl_default_runtime)

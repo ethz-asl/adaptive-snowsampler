@@ -52,15 +52,21 @@
 #include "grid_map_msgs/msg/grid_map.h"
 #include "grid_map_ros/GridMapRosConverter.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "px4_msgs/msg/distance_sensor.hpp"
 #include "px4_msgs/msg/vehicle_attitude.hpp"
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "snowsampler_msgs/srv/set_angle.hpp"
+#include "snowsampler_msgs/srv/take_measurement.hpp"
+#include "snowsampler_msgs/srv/trigger.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int8.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
+
+enum SSPState { Error, Ready_To_Measure, Taking_Measurement, Stopped_No_Home };
 
 using namespace std::chrono_literals;
 
@@ -98,6 +104,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
    */
   void vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg);
 
+  void distanceSensorCallback(const px4_msgs::msg::DistanceSensor &msg);
+
   void startPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
                              std::shared_ptr<planner_msgs::srv::SetVector3::Response> response);
 
@@ -118,6 +126,9 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   void callSetAngleService(double angle);
 
+  void takeMeasurementCallback(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
+                               snowsampler_msgs::srv::Trigger::Response::SharedPtr response);
+
   void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
 
@@ -128,8 +139,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
                               std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
 
-  void publishVehiclePosition(rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub,
-                              const Eigen::Vector3d &position);
+  void writeLog();
 
   void loadMap();
   void publishMap();
@@ -172,10 +182,12 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_slope_pub_;
   rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr vehicle_position_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr snow_depth_pub_;
 
   rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
   rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr vehicle_global_position_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr ssp_status_sub_;
+  rclcpp::Subscription<px4_msgs::msg::DistanceSensor>::SharedPtr distance_sensor_sub_;
 
   rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setgoal_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setstart_serviceserver_;
@@ -183,6 +195,9 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr land_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr goto_serviceserver_;
   rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr return_serviceserver_;
+  rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr measurement_serviceserver_;
+
+  rclcpp::Client<snowsampler_msgs::srv::TakeMeasurement>::SharedPtr ssp_measurement_serviceclient_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;
@@ -211,4 +226,11 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   double relative_altitude_ = 20.0;
   std::shared_ptr<GridMapGeo> map_;
   std::shared_ptr<GeographicLib::Geoid> egm96_5;
+
+  double snow_depth_;
+  double lidar_distance_;
+  SSPState sspState_ = SSPState::Ready_To_Measure;
+  int sspLogId_ = 1;
+  std::ofstream sspLogfile_;
+  std::string sspLogfilePath_;
 };

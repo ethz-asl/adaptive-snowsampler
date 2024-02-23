@@ -2,7 +2,7 @@
 
 **take measurement:**
 
-`ros2 service call /SSP/take_measurement snowsampler_msgs/srv/Trigger`
+`ros2 service call /SSP/take_measurement snowsampler_msgs/srv/TakeMeasurement`
 
 **stop measurement:**
 

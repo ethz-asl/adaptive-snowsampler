@@ -20,7 +20,6 @@ cp -vf $PACKAGE_PATH/systemd/ssp-bridge.service /etc/systemd/system/
 
 systemctl enable adaptive-snowsampler.service
 systemctl enable microxrce_agent.service
-systemctl enable rosbag-record.service
 systemctl enable ssp-bridge.service
 
 sudo systemctl start adaptive-snowsampler.service

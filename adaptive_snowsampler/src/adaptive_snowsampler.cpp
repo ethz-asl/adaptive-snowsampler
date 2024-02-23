@@ -56,10 +56,11 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   target_normal_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("target_normal", 1);
   setpoint_position_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("setpoint_position", 1);
   home_position_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("home_position", 1);
+  home_position_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("home_position", 1);
   target_slope_pub_ = this->create_publisher<std_msgs::msg::Float64>("target_slope", 1);
   vehicle_command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>("/fmu/in/vehicle_command", qos_profile);
   referencehistory_pub_ = this->create_publisher<nav_msgs::msg::Path>("reference/path", 1);
-  vehicle_position_pub_ = this->create_publisher<geometry_msgs::msg::Vector3>("/snowsampler/vehicle_position", 1);
+  snow_depth_pub_ = this->create_publisher<std_msgs::msg::Float64>("/snow_depth", 1);
 
   // Subscribers
   vehicle_global_position_sub_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
@@ -68,6 +69,9 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   vehicle_attitude_sub_ = this->create_subscription<px4_msgs::msg::VehicleAttitude>(
       "/fmu/out/vehicle_attitude", qos_profile,
       std::bind(&AdaptiveSnowSampler::vehicleAttitudeCallback, this, std::placeholders::_1));
+  distance_sensor_sub_ = this->create_subscription<px4_msgs::msg::DistanceSensor>(
+      "/fmu/out/distance_sensor", qos_profile,
+      std::bind(&AdaptiveSnowSampler::distanceSensorCallback, this, std::placeholders::_1));
 
   /// Service servers
   setgoal_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
@@ -93,6 +97,10 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
       "/adaptive_sampler/return",
       std::bind(&AdaptiveSnowSampler::returnCallback, this, std::placeholders::_1, std::placeholders::_2));
 
+  measurement_serviceserver_ = this->create_service<snowsampler_msgs::srv::Trigger>(
+      "/adaptive_sampler/take_measurement",
+      std::bind(&AdaptiveSnowSampler::takeMeasurementCallback, this, std::placeholders::_1, std::placeholders::_2));
+
   // Setup loop timers
   cmdloop_timer_ = this->create_wall_timer(100ms, std::bind(&AdaptiveSnowSampler::cmdloopCallback, this));
   statusloop_timer_ = this->create_wall_timer(1000ms, std::bind(&AdaptiveSnowSampler::statusloopCallback, this));
@@ -101,6 +109,15 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   file_path_ = this->declare_parameter("tif_path", ".");
   color_path_ = this->declare_parameter("tif_color_path", ".");
   frame_id_ = this->declare_parameter("frame_id", "map");
+
+  // ssp logfiles
+  std::string homeDir = getenv("HOME");
+  std::time_t t = std::time(nullptr);
+  std::tm *now = std::localtime(&t);
+  std::stringstream ss;
+  ss << std::put_time(now, "%Y_%m_%d_%H_%M_%S");
+  sspLogfilePath_ = homeDir + "/rosbag/ssp_" + ss.str() + ".txt";
+  sspLogfile_.open(sspLogfilePath_, std::ofstream::out | std::ofstream::app);
 }
 
 void AdaptiveSnowSampler::cmdloopCallback() {}
@@ -116,7 +133,6 @@ void AdaptiveSnowSampler::statusloopCallback() {
   publishSetpointPosition(home_position_pub_, home_position_, Eigen::Vector3d(1.0, 0.0, 0.0));
   publishTargetNormal(target_normal_pub_, target_position_ + 20.0 * target_normal_, -20.0 * target_normal_);
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
-  publishVehiclePosition(vehicle_position_pub_, lv03_vehicle_position_);
 }
 
 visualization_msgs::msg::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Vector3d &position,
@@ -290,6 +306,50 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::Veh
 
   // Send the transformation
   tf_broadcaster_->sendTransform(t);
+}
+void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::msg::DistanceSensor &msg) {
+  lidar_distance_ = msg.current_distance;
+}
+
+void AdaptiveSnowSampler::takeMeasurementCallback(
+    const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
+    snowsampler_msgs::srv::Trigger::Response::SharedPtr response) {
+  double ground_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
+  double drone_elevation = vehicle_position_.z();
+  snow_depth_ = drone_elevation - ground_elevation - lidar_distance_;
+  RCLCPP_INFO_STREAM(get_logger(), "drone_elevation " << drone_elevation);
+  RCLCPP_INFO_STREAM(get_logger(), "ground_elevation " << ground_elevation);
+  RCLCPP_INFO_STREAM(get_logger(), "lidar_distance " << lidar_distance_);
+
+  std_msgs::msg::Float64 msg;
+  msg.data = snow_depth_;
+  snow_depth_pub_->publish(msg);
+
+  ssp_measurement_serviceclient_ = this->create_client<snowsampler_msgs::srv::TakeMeasurement>("/SSP/take_measurement");
+  auto request_ssp = std::make_shared<snowsampler_msgs::srv::TakeMeasurement::Request>();
+  request_ssp->id = sspLogId_;
+
+  while (!ssp_measurement_serviceclient_->wait_for_service(std::chrono::seconds(1))) {
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+      response->success = false;
+      return;
+    }
+    RCLCPP_INFO(this->get_logger(), "Waiting for service to appear...");
+  }
+  auto result_future = ssp_measurement_serviceclient_->async_send_request(
+      request_ssp, [this, response](rclcpp::Client<snowsampler_msgs::srv::TakeMeasurement>::SharedFuture future) {
+        if (future.get()->success) {
+          RCLCPP_INFO(this->get_logger(), "Measurement taken successfully");
+          writeLog();
+          response->success = true;
+        } else {
+          RCLCPP_ERROR(this->get_logger(), "Failed to call service");
+          response->success = false;
+          sspLogfile_ << "Measurement " << sspLogId_ << " failed" << std::endl;
+        }
+      });
+  response->success = true;
 }
 
 /// TODO: Add service caller for setting start and goal states
@@ -485,11 +545,17 @@ void AdaptiveSnowSampler::callSetAngleService(double angle) {
   auto result_future = client->async_send_request(request);
 }
 
-void AdaptiveSnowSampler::publishVehiclePosition(rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr pub,
-                                                 const Eigen::Vector3d &position) {
-  geometry_msgs::msg::Vector3 msg;
-  msg.x = position.x();
-  msg.y = position.y();
-  msg.z = position.z();
-  pub->publish(msg);
+void AdaptiveSnowSampler::writeLog() {
+  if (sspLogfile_.is_open()) {
+    sspLogfile_ << "Measurement " << sspLogId_ << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
+                << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
+                << ", with snowdepth: " << snow_depth_ << std::endl;
+    RCLCPP_INFO_STREAM(get_logger(), "Measurement " << sspLogId_
+                                                    << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
+                                                    << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
+                                                    << ", with snowdepth: " << snow_depth_);
+    sspLogId_++;
+  } else {
+    RCLCPP_ERROR(get_logger(), "Could not open logfile");
+  }
 }
