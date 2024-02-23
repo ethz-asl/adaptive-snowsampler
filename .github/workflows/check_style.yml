@@ -1,0 +1,34 @@
+name: Style Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {rosdistro: 'humble', container: 'osrf/ros:humble-desktop'}
+    container: ${{ matrix.config.container }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: src/adaptive-snowsampler
+    - name: Install Dependencies with Rosdep
+      run: |
+        apt update
+        rosdep update
+        source /opt/ros/${{matrix.config.rosdistro}}/setup.bash
+        rosdep install --from-paths src --ignore-src -y --dependency-types test
+      shell: bash
+    - name: Check Code format
+      working-directory: src/adaptive-snowsampler/Tools
+      run: |
+        ./check_code_format.sh ..
