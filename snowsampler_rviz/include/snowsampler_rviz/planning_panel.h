@@ -21,10 +21,23 @@
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
 #include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/int8.hpp"
 
 #endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
+enum SSPState {
+  Error,
+  Ready_To_Measure,
+  Taking_Measurement,
+  Stopped_No_Home,
+  Going_Home,
+  Moving,
+  Position_Not_Reached,
+  ENUM_LENGTH
+};
+static const char* SSPState_string[] = {"Error",      "Ready_To_Measure", "Taking_Measurement",  "Stopped_No_Home",
+                                        "Going_Home", "Moving",           "Position_Not_Reached"};
 
 class QLineEdit;
 class QCheckBox;
@@ -62,6 +75,7 @@ class PlanningPanel : public rviz_common::Panel {
   void legAngleCallback(const std_msgs::msg::Float64& msg);
   void targetAngleCallback(const std_msgs::msg::Float64& msg);
   void snowDepthCallback(const std_msgs::msg::Float64& msg);
+  void sspStateCallback(const std_msgs::msg::Int8& msg);
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
   void updatePlanningBudget();
@@ -86,8 +100,9 @@ class PlanningPanel : public rviz_common::Panel {
   void setPlannerModeServiceLand();
   void setPlannerModeServiceGoTo();
   void setPlannerModeServiceReturn();
-  void callTakeMeasurementService();
-  void callStopMeasurementService();
+  void callSspTakeMeasurementService();
+  void callSspStopMeasurementService();
+  void callSspGoHomeService();
 
  protected:
   // Set up the layout, only called by the constructor.
@@ -103,16 +118,19 @@ class PlanningPanel : public rviz_common::Panel {
 
   QGroupBox* createPlannerModeGroup();
   QGroupBox* createLegControlGroup();
+  QGroupBox* createSspControlGroup();
   QGroupBox* createPlannerCommandGroup();
 
   // ROS Stuff:
   rclcpp::Node::SharedPtr node_;
+  rclcpp::Node::SharedPtr ssp_node_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr waypoint_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr controller_pub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr leg_angle_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr target_angle_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<planner_msgs::msg::NavigationStatus>::SharedPtr planner_state_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr ssp_state_sub_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr snow_depth_subscriber_;
 
   std::shared_ptr<GoalMarker> goal_marker_;
@@ -126,8 +144,9 @@ class PlanningPanel : public rviz_common::Panel {
   QLabel* snow_depth_label_;
   QLineEdit* angle_input_;
   QPushButton* set_leg_angle_button_;
-  QPushButton* take_measurement_button_;
-  QPushButton* stop_measurement_button_;
+  QPushButton* ssp_take_measurement_button_;
+  QPushButton* ssp_stop_measurement_button_;
+  QPushButton* ssp_go_home_button_;
   QCheckBox* terrain_align_checkbox_;
   PoseWidget* start_pose_widget_;
   PoseWidget* goal_pose_widget_;
@@ -162,6 +181,9 @@ class PlanningPanel : public rviz_common::Panel {
   // tf2 stuff:
   tf2_ros::Buffer tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
+  SSPState ssp_state_;
+  QLabel* ssp_state_label_;
 };
 
 }  // end namespace snowsampler_rviz

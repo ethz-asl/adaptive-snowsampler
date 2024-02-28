@@ -4,10 +4,6 @@
 
 ![simplescreenrecorder-2024-01-22_15 43 08-ezgif com-video-to-gif-converter](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/assets/5248102/66a692aa-e3e2-44a6-bdb5-1abd35ce0e69)
 
-## Depencencies:
-- [eProsima DDS-Router](https://eprosima-dds-router.readthedocs.io/en/latest/rst/developer_manual/installation/sources/linux.html#developer-manual-installation-sources-linux)
-- [transport_drivers](https://github.com/ros-drivers/transport_drivers/tree/main)
-
 ## Installation
 ```
 cd ~
@@ -23,7 +19,8 @@ cd ..
 sudo rosdep init
 rosdep update
 rosdep install --from-paths src --ignore-src -y
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to adaptive_snowsampler
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to snowsampler_rviz adaptive_snowsampler ssp_bridge
+
 
 # post building tasks
 echo 'ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="fc5f", GROUP="dialout"' | sudo tee /etc/udev/rules.d/99-actuonix.rules #setting usb permissions

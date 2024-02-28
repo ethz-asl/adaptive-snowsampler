@@ -147,8 +147,10 @@ void GoalMarker::callPlannerService(const std::string service_name, const Eigen:
   RCLCPP_INFO(node_->get_logger(), "Call Planner Service");
 
   std::thread t([this, service_name, vector] {
-    auto client = node_->create_client<planner_msgs::srv::SetVector3>(service_name);
-    if (!client->wait_for_service(1s)) {
+    auto temp_node = std::make_shared<rclcpp::Node>("temp_node");
+
+    auto client = temp_node->create_client<planner_msgs::srv::SetVector3>(service_name);
+    if (!client->wait_for_service(2s)) {
       RCLCPP_INFO(node_->get_logger(), service_name.c_str());
       return;
     }
@@ -158,8 +160,12 @@ void GoalMarker::callPlannerService(const std::string service_name, const Eigen:
     req->vector.z = vector(2);
 
     auto result = client->async_send_request(req);
-
+    if (rclcpp::spin_until_future_complete(temp_node, result) != rclcpp::FutureReturnCode::SUCCESS) {
+      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service [" << client->get_service_name() << "] failed.");
+      return;
+    }
     /// TODO: Okay to terminate without checks?
+
     return;
   });
   t.detach();

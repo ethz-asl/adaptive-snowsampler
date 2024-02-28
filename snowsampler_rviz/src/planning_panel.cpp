@@ -39,13 +39,13 @@ namespace snowsampler_rviz {
 PlanningPanel::PlanningPanel(QWidget* parent)
     : rviz_common::Panel(parent),
       tf_buffer_(std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME)),
-      tf_listener_(std::make_shared<tf2_ros::TransformListener>(tf_buffer_)) {
-  createLayout();
-  node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
-}
+      tf_listener_(std::make_shared<tf2_ros::TransformListener>(tf_buffer_)) {}
 
 void PlanningPanel::onInitialize() {
   auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  createLayout();
+  node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
+
   RCLCPP_INFO_STREAM(node_->get_logger(), "Creating Planner Mode Group");
   goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
@@ -57,6 +57,8 @@ void PlanningPanel::onInitialize() {
       "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
   snow_depth_subscriber_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
       "/snow_depth", 1, std::bind(&PlanningPanel::snowDepthCallback, this, _1));
+  ssp_state_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Int8>(
+      "/SSP/state", 1, std::bind(&PlanningPanel::sspStateCallback, this, _1));
   RCLCPP_INFO_STREAM(node_->get_logger(), "Subscribers Created");
 }
 
@@ -66,8 +68,8 @@ void PlanningPanel::createLayout() {
   // Planner services and publications.
   service_layout->addWidget(createPlannerModeGroup(), 0, 0, 4, 1);
   // log something
-
-  service_layout->addWidget(createLegControlGroup(), 4, 0, 4, 2);
+  service_layout->addWidget(createSspControlGroup(), 4, 0, 4, 1);
+  service_layout->addWidget(createLegControlGroup(), 8, 0, 4, 1);
 
   // First the names, then the start/goal, then service buttons.
   QVBoxLayout* layout = new QVBoxLayout;
@@ -75,8 +77,29 @@ void PlanningPanel::createLayout() {
   setLayout(layout);
 }
 
+QGroupBox* PlanningPanel::createSspControlGroup() {
+  QGroupBox* groupBox = new QGroupBox(tr("SSP control Actions"));
+  QGridLayout* service_layout = new QGridLayout;
+  ssp_take_measurement_button_ = new QPushButton("Take Measurement");
+  ssp_stop_measurement_button_ = new QPushButton("Stop Measurement");
+  ssp_go_home_button_ = new QPushButton("Go Home");
+  snow_depth_label_ = new QLabel("Snow Depth: ");
+  ssp_state_label_ = new QLabel("SSP State: " + QString::fromStdString(SSPState_string[ssp_state_]));
+
+  connect(ssp_take_measurement_button_, &QPushButton::released, this, &PlanningPanel::callSspTakeMeasurementService);
+  connect(ssp_stop_measurement_button_, &QPushButton::released, this, &PlanningPanel::callSspStopMeasurementService);
+  connect(ssp_go_home_button_, &QPushButton::released, this, &PlanningPanel::callSspGoHomeService);
+
+  service_layout->addWidget(ssp_take_measurement_button_, 0, 0, 1, 2);
+  service_layout->addWidget(ssp_stop_measurement_button_, 1, 0, 1, 1);
+  service_layout->addWidget(ssp_go_home_button_, 1, 1, 1, 1);
+  service_layout->addWidget(snow_depth_label_, 0, 2, 1, 2);
+  service_layout->addWidget(ssp_state_label_, 1, 2, 1, 2);
+  groupBox->setLayout(service_layout);
+  return groupBox;
+}
 QGroupBox* PlanningPanel::createLegControlGroup() {
-  QGroupBox* groupBox = new QGroupBox(tr("Leg Control Actions"));
+  QGroupBox* groupBox = new QGroupBox(tr("Leg control Actions"));
   QGridLayout* service_layout = new QGridLayout;
   QPushButton* set_leg_angle_button_ = new QPushButton("SET LEG ANGLE");
   QLineEdit* angle_input_ = new QLineEdit();
@@ -106,10 +129,6 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   set_planner_state_buttons_.push_back(new QPushButton("GOTO TARGET"));
   set_planner_state_buttons_.push_back(new QPushButton("RETURN"));
 
-  take_measurement_button_ = new QPushButton("Take Measurement");
-  stop_measurement_button_ = new QPushButton("Stop Measurement");
-  snow_depth_label_ = new QLabel("Snow Depth: ");
-
   QLineEdit* goal_x_input_ = new QLineEdit();
   goal_x_input_->setPlaceholderText("Easting");
   QLineEdit* goal_y_input_ = new QLineEdit();
@@ -120,12 +139,9 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   service_layout->addWidget(set_planner_state_buttons_[1], 0, 1, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[3], 0, 2, 1, 1);
   service_layout->addWidget(set_planner_state_buttons_[2], 0, 3, 1, 1);
-  service_layout->addWidget(take_measurement_button_, 1, 0, 1, 1);
-  service_layout->addWidget(stop_measurement_button_, 1, 1, 1, 1);
-  service_layout->addWidget(snow_depth_label_, 1, 2, 1, 2);
-  service_layout->addWidget(goal_x_input_, 2, 0, 1, 2);
-  service_layout->addWidget(goal_y_input_, 2, 2, 1, 2);
-  service_layout->addWidget(set_goal_button_, 3, 0, 1, 4);
+  service_layout->addWidget(goal_x_input_, 3, 0, 1, 2);
+  service_layout->addWidget(goal_y_input_, 3, 2, 1, 2);
+  service_layout->addWidget(set_goal_button_, 4, 0, 1, 4);
 
   groupBox->setLayout(service_layout);
 
@@ -133,9 +149,6 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   connect(set_planner_state_buttons_[1], SIGNAL(released()), this, SLOT(setPlannerModeServiceLand()));
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
-
-  connect(take_measurement_button_, &QPushButton::released, this, &PlanningPanel::callTakeMeasurementService);
-  connect(stop_measurement_button_, &QPushButton::released, this, &PlanningPanel::callStopMeasurementService);
 
   connect(set_goal_button_, &QPushButton::clicked, [this, goal_x_input_, goal_y_input_]() {
     bool ok_x, ok_y;
@@ -610,9 +623,10 @@ void PlanningPanel::callSetPlannerStateService(std::string service_name, const i
   t.detach();
 }
 
-void PlanningPanel::callTakeMeasurementService() { callSspService("/adaptive_sampler/take_measurement"); }
+void PlanningPanel::callSspTakeMeasurementService() { callSspService("/adaptive_sampler/take_measurement"); }
 
-void PlanningPanel::callStopMeasurementService() { callSspService("/SSP/stop_measurement"); }
+void PlanningPanel::callSspStopMeasurementService() { callSspService("/SSP/stop_measurement"); }
+void PlanningPanel::callSspGoHomeService() { callSspService("/SSP/go_home"); }
 
 // TODO: this could be combined with callSetPlannerStateService through templating
 void PlanningPanel::callSspService(std::string service_name) {
@@ -774,6 +788,9 @@ void PlanningPanel::targetAngleCallback(const std_msgs::msg::Float64& msg) {
 void PlanningPanel::snowDepthCallback(const std_msgs::msg::Float64& msg) {
   QString depth = QString::number(msg.data, 'f', 2);
   snow_depth_label_->setText("Snow Depth: " + depth + " m");
+}
+void PlanningPanel::sspStateCallback(const std_msgs::msg::Int8& msg) {
+  ssp_state_label_->setText("SSP State: " + QString::fromStdString(SSPState_string[msg.data]));
 }
 
 void PlanningPanel::plannerstateCallback(const planner_msgs::msg::NavigationStatus& msg) {

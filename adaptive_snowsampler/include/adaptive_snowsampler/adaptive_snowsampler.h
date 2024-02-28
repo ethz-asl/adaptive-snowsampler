@@ -67,7 +67,16 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
 
-enum SSPState { Error, Ready_To_Measure, Taking_Measurement, Stopped_No_Home, Going_Home, Moving, Position_Not_Reached, ENUM_LENGTH};
+enum SSPState {
+  Error,
+  Ready_To_Measure,
+  Taking_Measurement,
+  Stopped_No_Home,
+  Going_Home,
+  Moving,
+  Position_Not_Reached,
+  ENUM_LENGTH
+};
 
 using namespace std::chrono_literals;
 

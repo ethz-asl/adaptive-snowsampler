@@ -16,7 +16,16 @@
 #include "std_msgs/msg/int8.hpp"
 #include "std_msgs/msg/u_int8_multi_array.hpp"
 
-enum SSPState { Error, Ready_To_Measure, Taking_Measurement, Stopped_No_Home, Going_Home, Moving, Position_Not_Reached, ENUM_LENGTH};
+enum SSPState {
+  Error,
+  Ready_To_Measure,
+  Taking_Measurement,
+  Stopped_No_Home,
+  Going_Home,
+  Moving,
+  Position_Not_Reached,
+  ENUM_LENGTH
+};
 
 class SSPBridge : public rclcpp::Node {
  public:
