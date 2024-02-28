@@ -104,7 +104,7 @@ void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray &msg) {
       double position = std::stod(position_str);
       RCLCPP_DEBUG_STREAM(get_logger(), "state_: " << state_num);
       RCLCPP_DEBUG_STREAM(get_logger(), "position_: " << position);
-      if (state_num >= 0 && state_num <= 3) {
+      if (state_num >= 0 && state_num <= SSPState::ENUM_LENGTH) {
         state_ = static_cast<SSPState>(state_num);
         position_ = position;
 
