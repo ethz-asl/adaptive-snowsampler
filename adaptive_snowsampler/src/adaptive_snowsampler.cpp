@@ -72,6 +72,8 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   distance_sensor_sub_ = this->create_subscription<px4_msgs::msg::DistanceSensor>(
       "/fmu/out/distance_sensor", qos_profile,
       std::bind(&AdaptiveSnowSampler::distanceSensorCallback, this, std::placeholders::_1));
+  ssp_status_sub_ = this->create_subscription<std_msgs::msg::Int8>(
+      "/SSP/state", 10, std::bind(&AdaptiveSnowSampler::sspStateCallback, this, std::placeholders::_1));
 
   /// Service servers
   setgoal_serviceserver_ = this->create_service<planner_msgs::srv::SetVector3>(
@@ -267,6 +269,9 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAt
   vehicle_attitude.z() = -msg.q[3];
   const Eigen::Quaterniond attitude_offset{std::cos(0.5 * 0.5 * M_PI), 0.0, 0.0, std::sin(0.5 * 0.5 * M_PI)};
   vehicle_attitude_ = attitude_offset * vehicle_attitude;
+
+  // add value to the moving average filters
+  vehicle_attitude_buffer_.push_back(vehicle_attitude_.toRotationMatrix().eulerAngles(0, 1, 2));
 }
 
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg) {
@@ -349,6 +354,45 @@ void AdaptiveSnowSampler::takeMeasurementCallback(const snowsampler_msgs::srv::T
         }
       });
   response->success = true;
+}
+
+void AdaptiveSnowSampler::sspStateCallback(const std_msgs::msg::Int8::SharedPtr msg) {
+  sspState_ = static_cast<SSPState>(msg->data);
+  auto vehicle_attitude_euler = vehicle_attitude_.toRotationMatrix().eulerAngles(0, 1, 2);  // roll, pitch, yaw
+
+  if (sspState_ == SSPState::Ready_To_Measure) {
+    //
+    Eigen::Vector3d sum(0.0, 0.0, 0.0);
+    for (int i = 0; i < vehicle_attitude_buffer_.size(); i++) {
+      sum += vehicle_attitude_buffer_[i];
+      ;
+    }
+
+    vehicle_attitude_filtered_ref_ = sum / vehicle_attitude_buffer_.size();
+
+  } else if (sspState_ == SSPState::Taking_Measurement) {
+    RCLCPP_INFO_STREAM(get_logger(), "tilt detection active ");
+
+    Eigen::Vector3d sum(0.0, 0.0, 0.0);
+    for (int i = vehicle_attitude_buffer_.size() - tilt_window_size_; i < vehicle_attitude_buffer_.size(); i++) {
+      sum += vehicle_attitude_buffer_[i];
+    }
+    Eigen::Vector3d vehicle_attitude_filtered = sum / tilt_window_size_;
+
+    // check if the drone is tilting too much
+    if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
+      // stop measurement
+      RCLCPP_INFO_STREAM(get_logger(), "drone is tilting, stopping measurement");
+      RCLCPP_INFO_STREAM(
+          get_logger(), "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff());
+
+      auto client = this->create_client<snowsampler_msgs::srv::Trigger>("SSP/stop_measurement");
+      auto request = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
+      using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+      auto response_received_callback = [this](ServiceResponseFuture future) { auto result = future.get(); };
+      auto result_future = client->async_send_request(request);
+    }
+  }
 }
 
 /// TODO: Add service caller for setting start and goal states

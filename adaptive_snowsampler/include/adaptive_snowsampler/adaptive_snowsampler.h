@@ -39,6 +39,7 @@
  */
 
 #include <Eigen/Dense>
+#include <boost/circular_buffer.hpp>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -102,6 +103,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
    *
    * @param msg
    */
+  void sspStateCallback(const std_msgs::msg::Int8::SharedPtr msg);
+
   void vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg);
 
   void distanceSensorCallback(const px4_msgs::msg::DistanceSensor &msg);
@@ -207,6 +210,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d map_origin_{Eigen::Vector3d{0.0, 0.0, 0.0}};
   std::vector<geometry_msgs::msg::PoseStamped> positionhistory_vector_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
+  boost::circular_buffer<Eigen::Vector3d> vehicle_attitude_buffer_{20};
+  Eigen::Vector3d vehicle_attitude_filtered_ref_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   bool map_initialized_{false};
   std::string file_path_;
@@ -219,6 +224,10 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d setpoint_positon_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d home_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+
+  // tilt prevention parameters
+  double tilt_treshold_{0.06};  // ~3.5deg
+  double tilt_window_size_{3};
 
   double target_heading_{0.0};
   double target_slope_{0.0};
