@@ -49,7 +49,6 @@ find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Test Concurrent)
 set(snowsampler_rviz_plugins_headers_to_moc
   include/snowsampler_rviz/pose_widget.h
   include/snowsampler_rviz/planning_panel.h
-  include/snowsampler_rviz/edit_button.h
 )
 
 # # I prefer the Qt signals and slots to avoid defining "emit", "slots",
@@ -63,7 +62,6 @@ set(snowsampler_rviz_plugins_headers_to_moc
 add_library(${PROJECT_NAME} SHARED
   src/planning_panel.cpp
   src/pose_widget.cpp
-  src/edit_button.cpp
   src/goal_marker.cpp
   ${snowsampler_rviz_plugins_headers_to_moc}
 )
