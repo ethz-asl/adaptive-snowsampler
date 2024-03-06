@@ -64,12 +64,6 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-install(DIRECTORY
-  rviz
-  DESTINATION share/${PROJECT_NAME}/
-)
-
-
 ament_python_install_package(snowsampler_lac)
 
 install(PROGRAMS
