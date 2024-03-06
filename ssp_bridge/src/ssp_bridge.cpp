@@ -37,27 +37,16 @@ SSPBridge::SSPBridge() : Node("ssp_bridge") {
 
 void SSPBridge::take_measurement_service(const snowsampler_msgs::srv::TakeMeasurement::Request::SharedPtr request,
                                          snowsampler_msgs::srv::TakeMeasurement::Response::SharedPtr response) {
-  // TODO: Get gps location, create logfile, read measurement id
-  if (state_ == Ready_To_Measure) {
-    SSPBridge::writeSerial("take measurement:" + std::to_string(request->id));
-    response->success = true;
-    RCLCPP_INFO(get_logger(), "Take measurement service called");
-  } else {
-    response->success = false;
-    RCLCPP_INFO(get_logger(), "Take measurement service called but not ready to measure");
-  }
+  SSPBridge::writeSerial("take measurement:" + std::to_string(request->id));
+  response->success = true;
+  RCLCPP_INFO(get_logger(), "Take measurement service called");
 }
 void SSPBridge::stop_measurement_service(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
                                          snowsampler_msgs::srv::Trigger::Response::SharedPtr response) {
-  if (state_ == Taking_Measurement) {  // can i get stuck here?
-    SSPBridge::writeSerial("stop measurement");
-    (void)request;
-    response->success = true;
-    RCLCPP_INFO(get_logger(), "Stop measurement service called");
-  } else {
-    response->success = false;
-    RCLCPP_INFO(get_logger(), "Stop measurement service called but not measuring");
-  }
+  (void)request;
+  SSPBridge::writeSerial("stop measurement");
+  response->success = true;
+  RCLCPP_INFO(get_logger(), "Stop measurement service called");
 }
 
 void SSPBridge::go_home_service(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
@@ -85,7 +74,7 @@ void SSPBridge::set_max_speed_service(const snowsampler_msgs::srv::SetMaxSpeed::
   RCLCPP_INFO(get_logger(), "set max speed service called");
 }
 
-void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray &msg) {
+void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray& msg) {
   // the message is in the form:
   // State: 1, Position: 0.00mm
 
@@ -98,24 +87,29 @@ void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray &msg) {
     std::string state_str =
         out_str.substr(state_pos + 7, position_pos - state_pos - 9);  // -9 to remove ", Position: " part
     std::string position_str = out_str.substr(position_pos + 10);     // +10 to remove "Position: " part
+    try {
+      if (!position_str.empty()) {
+        int state_num = std::stoi(state_str);
+        double position = std::stod(position_str);
+        RCLCPP_DEBUG_STREAM(get_logger(), "state_: " << state_num);
+        RCLCPP_DEBUG_STREAM(get_logger(), "position_: " << position);
+        if (state_num >= 0 && state_num <= SSPState::ENUM_LENGTH) {
+          state_ = static_cast<SSPState>(state_num);
+          position_ = position;
 
-    if (!position_str.empty()) {
-      int state_num = std::stoi(state_str);
-      double position = std::stod(position_str);
-      RCLCPP_DEBUG_STREAM(get_logger(), "state_: " << state_num);
-      RCLCPP_DEBUG_STREAM(get_logger(), "position_: " << position);
-      if (state_num >= 0 && state_num <= SSPState::ENUM_LENGTH) {
-        state_ = static_cast<SSPState>(state_num);
-        position_ = position;
+          std_msgs::msg::Int8 state_msg;
+          state_msg.data = state_num;
+          state_publisher_->publish(state_msg);
 
-        std_msgs::msg::Int8 state_msg;
-        state_msg.data = state_num;
-        state_publisher_->publish(state_msg);
-
-        std_msgs::msg::Float64 position_msg;
-        position_msg.data = position_;
-        position_publisher_->publish(position_msg);
+          std_msgs::msg::Float64 position_msg;
+          position_msg.data = position_;
+          position_publisher_->publish(position_msg);
+        }
       }
+    } catch (const std::invalid_argument& e) {
+      RCLCPP_ERROR(get_logger(), "Invalid argument for std::stod: %s", e.what());
+    } catch (const std::out_of_range& e) {
+      RCLCPP_ERROR(get_logger(), "Argument out of range for std::stod: %s", e.what());
     }
   }
 }

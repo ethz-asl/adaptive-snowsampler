@@ -58,8 +58,8 @@ class SSPBridge : public rclcpp::Node {
                              snowsampler_msgs::srv::SetMaxSpeed::Response::SharedPtr response);
 
   // the current sate of the SSP using the state ENUM
-  SSPState state_;
-  double position_;
+  SSPState state_{SSPState::Error};
+  double position_{0.0};
 
   rclcpp::Service<snowsampler_msgs::srv::TakeMeasurement>::SharedPtr srv_take_measurement_;
   rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr srv_stop_measurement_;

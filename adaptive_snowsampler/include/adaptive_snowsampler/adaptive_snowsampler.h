@@ -156,6 +156,8 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   void loadMap();
   void publishMap();
 
+  void tiltCheckCallback();
+
   /**
    * @brief Convert 3D vector into arrow marker
    *
@@ -186,6 +188,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
 
   rclcpp::TimerBase::SharedPtr statusloop_timer_;
   rclcpp::TimerBase::SharedPtr cmdloop_timer_;
+  rclcpp::TimerBase::SharedPtr measurement_tilt_timer_;
 
   rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
@@ -235,7 +238,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d home_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   // tilt prevention parameters
-  double tilt_treshold_{0.06};  // ~3.5deg
+  double tilt_treshold_{0.035};  // ~2deg
   double tilt_window_size_{3};
 
   double target_heading_{0.0};
