@@ -240,6 +240,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   // tilt prevention parameters
   double tilt_treshold_{0.035};  // ~2deg
   double tilt_window_size_{3};
+  bool tilt_prevention_{false};
 
   double target_heading_{0.0};
   double target_slope_{0.0};

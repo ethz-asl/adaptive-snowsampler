@@ -106,6 +106,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler() : Node("minimal_publisher") {
   // Setup loop timers
   cmdloop_timer_ = this->create_wall_timer(100ms, std::bind(&AdaptiveSnowSampler::cmdloopCallback, this));
   statusloop_timer_ = this->create_wall_timer(1000ms, std::bind(&AdaptiveSnowSampler::statusloopCallback, this));
+  measurement_tilt_timer_ = this->create_wall_timer(100ms, std::bind(&AdaptiveSnowSampler::tiltCheckCallback, this));
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
   file_path_ = this->declare_parameter("tif_path", ".");
@@ -328,8 +329,7 @@ void AdaptiveSnowSampler::takeMeasurementCallback(const snowsampler_msgs::srv::T
   std_msgs::msg::Float64 msg;
   msg.data = snow_depth_;
   snow_depth_pub_->publish(msg);
-
-  measurement_tilt_timer_ = this->create_wall_timer(100ms, std::bind(&AdaptiveSnowSampler::tiltCheckCallback, this));
+  tilt_prevention_ = true;
 
   ssp_measurement_serviceclient_ = this->create_client<snowsampler_msgs::srv::TakeMeasurement>("/SSP/take_measurement");
   auto request_ssp = std::make_shared<snowsampler_msgs::srv::TakeMeasurement::Request>();
@@ -361,9 +361,7 @@ void AdaptiveSnowSampler::takeMeasurementCallback(const snowsampler_msgs::srv::T
 void AdaptiveSnowSampler::sspStateCallback(const std_msgs::msg::Int8::SharedPtr msg) {
   // If the state changes from taking measurement to something else, stop the tilt prevention timer
   if (sspState_ == SSPState::Taking_Measurement && msg->data != SSPState::Taking_Measurement) {
-    if (measurement_tilt_timer_ && !measurement_tilt_timer_->is_canceled()) {
-      measurement_tilt_timer_->cancel();
-    }
+    tilt_prevention_ = false;
   }
 
   sspState_ = static_cast<SSPState>(msg->data);
@@ -382,26 +380,29 @@ void AdaptiveSnowSampler::sspStateCallback(const std_msgs::msg::Int8::SharedPtr 
 }
 
 void AdaptiveSnowSampler::tiltCheckCallback() {
-  Eigen::Vector3d sum(0.0, 0.0, 0.0);
-  for (int i = vehicle_attitude_buffer_.size() - tilt_window_size_; i < vehicle_attitude_buffer_.size(); i++) {
-    sum += vehicle_attitude_buffer_[i];
-  }
-  Eigen::Vector3d vehicle_attitude_filtered = sum / tilt_window_size_;
+  if (tilt_prevention_) {
+    RCLCPP_INFO_ONCE(get_logger(), "Tilt prevention is active");
+    Eigen::Vector3d sum(0.0, 0.0, 0.0);
+    for (int i = vehicle_attitude_buffer_.size() - tilt_window_size_; i < vehicle_attitude_buffer_.size(); i++) {
+      sum += vehicle_attitude_buffer_[i];
+    }
+    Eigen::Vector3d vehicle_attitude_filtered = sum / tilt_window_size_;
 
-  // check if the drone is tilting too much
-  if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
-    // stop measurement
-    RCLCPP_INFO_STREAM(get_logger(), "drone is tilting, stopping measurement");
-    RCLCPP_INFO_STREAM(get_logger(),
-                       "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff());
+    // check if the drone is tilting too much
+    if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
+      // stop measurement
+      RCLCPP_INFO_STREAM(get_logger(), "drone is tilting, stopping measurement");
+      RCLCPP_INFO_STREAM(
+          get_logger(), "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff());
 
-    auto client = this->create_client<snowsampler_msgs::srv::Trigger>("SSP/stop_measurement");
-    auto request = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
-    using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
-    auto response_received_callback = [this](ServiceResponseFuture future) { auto result = future.get(); };
-    auto result_future = client->async_send_request(request);
+      auto client = this->create_client<snowsampler_msgs::srv::Trigger>("SSP/stop_measurement");
+      auto request = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
+      using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+      auto response_received_callback = [this](ServiceResponseFuture future) { auto result = future.get(); };
+      auto result_future = client->async_send_request(request);
 
-    measurement_tilt_timer_->cancel();
+      tilt_prevention_ = false;
+    }
   }
 }
 
