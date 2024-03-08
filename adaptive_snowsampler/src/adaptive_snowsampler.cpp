@@ -474,7 +474,7 @@ void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::sr
 
 void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                                        std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
-  callSetAngleService(target_slope_);  // Set the landing leg angle to match the slope
+  callSetAngleService(target_slope_* 180.0 / M_PI);  // Set the landing leg angle to match the slope
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_LAND;
