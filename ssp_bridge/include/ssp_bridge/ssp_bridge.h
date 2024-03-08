@@ -10,6 +10,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "snowsampler_msgs/srv/get_position.hpp"
 #include "snowsampler_msgs/srv/set_max_speed.hpp"
+#include "snowsampler_msgs/srv/set_measurement_depth.hpp"
 #include "snowsampler_msgs/srv/take_measurement.hpp"
 #include "snowsampler_msgs/srv/trigger.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -57,6 +58,9 @@ class SSPBridge : public rclcpp::Node {
   void set_max_speed_service(const snowsampler_msgs::srv::SetMaxSpeed::Request::SharedPtr request,
                              snowsampler_msgs::srv::SetMaxSpeed::Response::SharedPtr response);
 
+  void set_measurement_depth_service(const snowsampler_msgs::srv::SetMeasurementDepth::Request::SharedPtr request,
+                                     snowsampler_msgs::srv::SetMeasurementDepth::Response::SharedPtr response);
+
   // the current sate of the SSP using the state ENUM
   SSPState state_{SSPState::Error};
   double position_{0.0};
@@ -66,4 +70,5 @@ class SSPBridge : public rclcpp::Node {
   rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr srv_go_home_;
   rclcpp::Service<snowsampler_msgs::srv::GetPosition>::SharedPtr srv_get_position_;
   rclcpp::Service<snowsampler_msgs::srv::SetMaxSpeed>::SharedPtr srv_set_max_speed_;
+  rclcpp::Service<snowsampler_msgs::srv::SetMeasurementDepth>::SharedPtr srv_set_measurement_depth_;
 };  // class SSPBridge

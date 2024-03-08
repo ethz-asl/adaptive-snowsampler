@@ -86,16 +86,24 @@ QGroupBox* PlanningPanel::createSspControlGroup() {
   ssp_go_home_button_ = new QPushButton("Go Home");
   snow_depth_label_ = new QLabel("Snow Depth: ");
   ssp_state_label_ = new QLabel("SSP State: " + QString::fromStdString(SSPState_string[ssp_state_]));
+  ssp_set_measurement_depth_button_ = new QPushButton("Set Measurement Depth");
+  QLineEdit* measurement_depth_input_ = new QLineEdit();
 
   connect(ssp_take_measurement_button_, &QPushButton::released, this, &PlanningPanel::callSspTakeMeasurementService);
   connect(ssp_stop_measurement_button_, &QPushButton::released, this, &PlanningPanel::callSspStopMeasurementService);
   connect(ssp_go_home_button_, &QPushButton::released, this, &PlanningPanel::callSspGoHomeService);
-
+  connect(ssp_set_measurement_depth_button_, &QPushButton::clicked, [this, measurement_depth_input_]() {
+    QString depth_str = measurement_depth_input_->text();
+    callSspSetMeasurementDepthService(depth_str.toInt());
+  });
   service_layout->addWidget(ssp_take_measurement_button_, 0, 0, 1, 2);
   service_layout->addWidget(ssp_stop_measurement_button_, 1, 0, 1, 1);
   service_layout->addWidget(ssp_go_home_button_, 1, 1, 1, 1);
   service_layout->addWidget(snow_depth_label_, 0, 2, 1, 2);
   service_layout->addWidget(ssp_state_label_, 1, 2, 1, 2);
+  service_layout->addWidget(ssp_set_measurement_depth_button_, 2, 0, 1, 1);
+  service_layout->addWidget(measurement_depth_input_, 2, 1, 1, 1);
+
   groupBox->setLayout(service_layout);
   return groupBox;
 }
@@ -632,6 +640,25 @@ void PlanningPanel::callSspService(std::string service_name) {
 
   auto result = client->async_send_request(request);
   // Wait for the result.
+  if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
+    RCLCPP_INFO_STREAM(node_->get_logger(), "Successfully called service: " << service_name);
+
+  } else {
+    RCLCPP_ERROR_STREAM(node_->get_logger(), "Failed to call service: " << service_name);
+  }
+}
+
+void PlanningPanel::callSspSetMeasurementDepthService(int depth) {
+  std::string service_name = "/SSP/set_measurement_depth";
+  auto client = node_->create_client<snowsampler_msgs::srv::SetMeasurementDepth>(service_name);
+  if (!client->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
+    return;
+  }
+
+  auto request = std::make_shared<snowsampler_msgs::srv::SetMeasurementDepth::Request>();
+  request->data = depth;
+  auto result = client->async_send_request(request);
   if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO_STREAM(node_->get_logger(), "Successfully called service: " << service_name);
 

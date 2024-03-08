@@ -1,0 +1,4 @@
+# SetMeasurementDepth.srv
+int8 data
+---
+bool success

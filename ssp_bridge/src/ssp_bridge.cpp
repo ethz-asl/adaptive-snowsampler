@@ -23,6 +23,10 @@ SSPBridge::SSPBridge() : Node("ssp_bridge") {
       "/SSP/set_max_speed",
       std::bind(&SSPBridge::set_max_speed_service, this, std::placeholders::_1, std::placeholders::_2));
 
+  srv_set_measurement_depth_ = this->create_service<snowsampler_msgs::srv::SetMeasurementDepth>(
+      "/SSP/set_measurement_depth",
+      std::bind(&SSPBridge::set_measurement_depth_service, this, std::placeholders::_1, std::placeholders::_2));
+
   // Create Publisher
   state_publisher_ = this->create_publisher<std_msgs::msg::Int8>("SSP/state", rclcpp::QoS{100});
 
@@ -72,6 +76,14 @@ void SSPBridge::set_max_speed_service(const snowsampler_msgs::srv::SetMaxSpeed::
   SSPBridge::writeSerial("set max speed: " + std::to_string(request->data));
   response->success = true;
   RCLCPP_INFO(get_logger(), "set max speed service called");
+}
+
+void SSPBridge::set_measurement_depth_service(
+    const snowsampler_msgs::srv::SetMeasurementDepth::Request::SharedPtr request,
+    snowsampler_msgs::srv::SetMeasurementDepth::Response::SharedPtr response) {
+  SSPBridge::writeSerial("set measurement depth: " + std::to_string(request->data));
+  response->success = true;
+  RCLCPP_INFO(get_logger(), "set measurement depth service called [%d]", request->data);
 }
 
 void SSPBridge::serial_callback(const std_msgs::msg::UInt8MultiArray& msg) {

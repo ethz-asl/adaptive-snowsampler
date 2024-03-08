@@ -17,6 +17,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "mav_msgs/conversions.hpp"
 #include "mav_msgs/eigen_mav_msgs.hpp"
+#include "snowsampler_msgs/srv/set_measurement_depth.hpp"
 #include "snowsampler_msgs/srv/trigger.hpp"
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
@@ -104,6 +105,7 @@ class PlanningPanel : public rviz_common::Panel {
   void callSspTakeMeasurementService();
   void callSspStopMeasurementService();
   void callSspGoHomeService();
+  void callSspSetMeasurementDepthService(int depth);
 
  protected:
   // Set up the layout, only called by the constructor.
@@ -145,10 +147,12 @@ class PlanningPanel : public rviz_common::Panel {
   QLabel* target_angle_label_;
   QLabel* snow_depth_label_;
   QLineEdit* angle_input_;
+  QLineEdit* measurement_depth_input_;
   QPushButton* set_leg_angle_button_;
   QPushButton* ssp_take_measurement_button_;
   QPushButton* ssp_stop_measurement_button_;
   QPushButton* ssp_go_home_button_;
+  QPushButton* ssp_set_measurement_depth_button_;
   QCheckBox* terrain_align_checkbox_;
   PoseWidget* start_pose_widget_;
   PoseWidget* goal_pose_widget_;
