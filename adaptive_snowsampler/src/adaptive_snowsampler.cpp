@@ -378,7 +378,6 @@ void AdaptiveSnowSampler::sspStateCallback(const std_msgs::msg::Int8::SharedPtr 
     }
 
     vehicle_attitude_filtered_ref_ = sum / vehicle_attitude_buffer_.size();
-    // check if the tiltprevention timer is running, if it is. stop it
   }
 }
 
@@ -410,6 +409,7 @@ void AdaptiveSnowSampler::tiltCheckCallback() {
 
 void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
                                                std::shared_ptr<planner_msgs::srv::SetVector3::Response> response) {
+  response->success = true;
   target_position_.x() = request->vector.x;
   target_position_.y() = request->vector.y;
 
@@ -438,8 +438,6 @@ void AdaptiveSnowSampler::goalPositionCallback(const std::shared_ptr<planner_msg
   std_msgs::msg::Float64 slope_msg;
   slope_msg.data = target_slope_ * 180.0 / M_PI;  // rad to deg
   target_slope_pub_->publish(slope_msg);
-
-  response->success = true;
 }
 
 void AdaptiveSnowSampler::startPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,

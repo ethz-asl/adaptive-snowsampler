@@ -8,6 +8,7 @@
 
 #include <QGroupBox>
 #include <QLabel>
+#include <QTimer>
 #include <nav_msgs/msg/odometry.hpp>
 #include <planner_msgs/msg/navigation_status.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -113,6 +114,7 @@ class PlanningPanel : public rviz_common::Panel {
   void setMaxAltitudeConstrant(bool set_constraint);
   void callSetPlannerStateService(std::string service_name, const int mode);
   void callSspService(std::string service_name);
+  void spinNode();
 
   bool getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform);
 
@@ -163,6 +165,7 @@ class PlanningPanel : public rviz_common::Panel {
   QPushButton* max_altitude_button_disable_;
   QPushButton* controller_button_;
   QPushButton* load_terrain_button_;
+  QTimer spin_timer_;
 
   // Keep track of all the pose <-> button widgets as they're related:
   std::map<std::string, PoseWidget*> pose_widget_map_;

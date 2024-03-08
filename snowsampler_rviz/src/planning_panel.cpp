@@ -42,24 +42,25 @@ PlanningPanel::PlanningPanel(QWidget* parent)
       tf_listener_(std::make_shared<tf2_ros::TransformListener>(tf_buffer_)) {}
 
 void PlanningPanel::onInitialize() {
-  auto rviz_ros_node = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  // auto node_ = this->getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   createLayout();
   node_ = std::make_shared<rclcpp::Node>("snowsampler_rviz");
-
   RCLCPP_INFO_STREAM(node_->get_logger(), "Creating Planner Mode Group");
-  goal_marker_ = std::make_shared<GoalMarker>(rviz_ros_node);
+  goal_marker_ = std::make_shared<GoalMarker>(node_);
   planner_state_sub_ = node_->create_subscription<planner_msgs::msg::NavigationStatus>(
       "/planner_status", 1, std::bind(&PlanningPanel::plannerstateCallback, this, _1));
 
-  leg_angle_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
+  leg_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
       "/snowsampler/landing_leg_angle", 1, std::bind(&PlanningPanel::legAngleCallback, this, _1));
-  target_angle_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
+  target_angle_sub_ = node_->create_subscription<std_msgs::msg::Float64>(
       "/target_slope", 1, std::bind(&PlanningPanel::targetAngleCallback, this, _1));
-  snow_depth_subscriber_ = rviz_ros_node->create_subscription<std_msgs::msg::Float64>(
+  snow_depth_subscriber_ = node_->create_subscription<std_msgs::msg::Float64>(
       "/snow_depth", 1, std::bind(&PlanningPanel::snowDepthCallback, this, _1));
-  ssp_state_sub_ = rviz_ros_node->create_subscription<std_msgs::msg::Int8>(
+  ssp_state_sub_ = node_->create_subscription<std_msgs::msg::Int8>(
       "/SSP/state", 1, std::bind(&PlanningPanel::sspStateCallback, this, _1));
   RCLCPP_INFO_STREAM(node_->get_logger(), "Subscribers Created");
+  connect(&spin_timer_, &QTimer::timeout, this, &PlanningPanel::spinNode);
+  spin_timer_.start(10);
 }
 
 void PlanningPanel::createLayout() {
@@ -162,7 +163,7 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
       double y = y_ch1903 + ch1903_to_map_transform.transform.translation.y;
 
       goal_marker_->setGoalPosition(Eigen::Vector2d(x, y));
-      RCLCPP_INFO(node_->get_logger(), "Goal position set to: %f, %f", x_ch1903, y_ch1903);
+      RCLCPP_INFO_STREAM(node_->get_logger(), "Goal position set to: " << x_ch1903 << "," << y_ch1903);
     } else {
       RCLCPP_ERROR(node_->get_logger(), "Invalid input for goal coordinates.");
     }
@@ -595,32 +596,22 @@ void PlanningPanel::setPlannerModeServiceReturn() { callSetPlannerStateService("
 void PlanningPanel::setPlannerModeServiceLand() { callSetPlannerStateService("/adaptive_sampler/land", 3); }
 
 void PlanningPanel::callSetPlannerStateService(std::string service_name, const int mode) {
-  std::thread t([this, service_name, mode] {
-    auto client = node_->create_client<planner_msgs::srv::SetService>(service_name);
-    if (!client->wait_for_service(1s)) {
-      RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
-      return;
-    }
+  auto client = node_->create_client<planner_msgs::srv::SetService>(service_name);
+  if (!client->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
+    return;
+  }
 
-    auto req = std::make_shared<planner_msgs::srv::SetService::Request>();
+  auto request = std::make_shared<planner_msgs::srv::SetService::Request>();
 
-    auto result = client->async_send_request(req);
+  auto result = client->async_send_request(request);
+  // Wait for the result.
+  if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
+    RCLCPP_INFO_STREAM(node_->get_logger(), "Successfully called service: " << service_name);
 
-    if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS) {
-      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service [" << client->get_service_name() << "] failed.");
-      return;
-    }
-
-    // try {
-    //   RCLCPP_DEBUG_STREAM(node_->get_logger(), "Service name: " << service_name);
-    //   if (!ros::service::call(service_name, req)) {
-    //     std::cout << "Couldn't call service: " << service_name << std::endl;
-    //   }
-    // } catch (const std::exception& e) {
-    //   std::cout << "Service Exception: " << e.what() << std::endl;
-    // }
-  });
-  t.detach();
+  } else {
+    RCLCPP_ERROR_STREAM(node_->get_logger(), "Failed to call service: " << service_name);
+  }
 }
 
 void PlanningPanel::callSspTakeMeasurementService() { callSspService("/adaptive_sampler/take_measurement"); }
@@ -630,23 +621,23 @@ void PlanningPanel::callSspGoHomeService() { callSspService("/SSP/go_home"); }
 
 // TODO: this could be combined with callSetPlannerStateService through templating
 void PlanningPanel::callSspService(std::string service_name) {
-  std::thread t([this, service_name] {
-    auto client = node_->create_client<snowsampler_msgs::srv::Trigger>(service_name);
-    if (!client->wait_for_service(1s)) {
-      RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
-      return;
-    }
+  // RCLCPP_INFO_STREAM(node_->get_logger(), "Calling SSP service: " << service_name);
+  auto client = node_->create_client<snowsampler_msgs::srv::Trigger>(service_name);
+  if (!client->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(node_->get_logger(), "Service [" << service_name << "] not available.");
+    return;
+  }
 
-    auto req = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
+  auto request = std::make_shared<snowsampler_msgs::srv::Trigger::Request>();
 
-    auto result = client->async_send_request(req);
+  auto result = client->async_send_request(request);
+  // Wait for the result.
+  if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
+    RCLCPP_INFO_STREAM(node_->get_logger(), "Successfully called service: " << service_name);
 
-    if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS) {
-      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service [" << client->get_service_name() << "] failed.");
-      return;
-    }
-  });
-  t.detach();
+  } else {
+    RCLCPP_ERROR_STREAM(node_->get_logger(), "Failed to call service: " << service_name);
+  }
 }
 
 void PlanningPanel::setStartService() {
@@ -834,19 +825,19 @@ void PlanningPanel::plannerstateCallback(const planner_msgs::msg::NavigationStat
 }
 
 void PlanningPanel::callSetAngleService(double angle) {
-  RCLCPP_INFO_ONCE(node_->get_logger(), "Calling service");
+  // RCLCPP_INFO_STREAM(node_->get_logger(), "Calling setAngle service");
   auto client = node_->create_client<snowsampler_msgs::srv::SetAngle>("snowsampler/set_landing_leg_angle");
   auto request = std::make_shared<snowsampler_msgs::srv::SetAngle::Request>();
   request->angle = angle;
 
-  using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::srv::SetAngle>::SharedFuture;
+  auto result = client->async_send_request(request);
+  // Wait for the result.
+  if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS) {
+    RCLCPP_INFO_STREAM(node_->get_logger(), "Successfully called service: snowsampler/set_landing_leg_angle");
 
-  auto response_received_callback = [this](ServiceResponseFuture future) {
-    auto result = future.get();
-    RCLCPP_INFO_ONCE(node_->get_logger(), "Service response: %s", result->success ? "true" : "false");
-  };
-
-  auto result_future = client->async_send_request(request, response_received_callback);
+  } else {
+    RCLCPP_ERROR_STREAM(node_->get_logger(), "Failed to call service: snowsampler/set_landing_leg_angle");
+  }
 }
 
 bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped& transform) {
@@ -858,6 +849,13 @@ bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::msg::TransformStamped
     return false;
   }
 }
+
+void PlanningPanel::spinNode() {
+  if (rclcpp::ok()) {
+    rclcpp::spin_some(node_);
+  }
+}
+
 }  // namespace snowsampler_rviz
 
 #include <pluginlib/class_list_macros.hpp>  // NOLINT

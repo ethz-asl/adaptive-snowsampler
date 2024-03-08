@@ -130,43 +130,35 @@ void GoalMarker::initializeMenu() {
 }
 
 void GoalMarker::setStartCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
-  RCLCPP_INFO(node_->get_logger(), "Set as Start callback.");
   callPlannerService("/set_start", goal_pos_);
   menu_handler_.reApply(marker_server_);
   marker_server_.applyChanges();
 }
 
 void GoalMarker::setGoalCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
-  RCLCPP_INFO(node_->get_logger(), "Set as Start callback.");
   callPlannerService("/set_goal", goal_pos_);
   menu_handler_.reApply(marker_server_);
   marker_server_.applyChanges();
 }
 
 void GoalMarker::callPlannerService(const std::string service_name, const Eigen::Vector3d vector) {
-  RCLCPP_INFO(node_->get_logger(), "Call Planner Service");
-
-  std::thread t([this, service_name, vector] {
-    auto temp_node = std::make_shared<rclcpp::Node>("temp_node");
-
-    auto client = temp_node->create_client<planner_msgs::srv::SetVector3>(service_name);
-    if (!client->wait_for_service(2s)) {
-      RCLCPP_INFO(node_->get_logger(), service_name.c_str());
-      return;
-    }
-    auto req = std::make_shared<planner_msgs::srv::SetVector3::Request>();
-    req->vector.x = vector(0);
-    req->vector.y = vector(1);
-    req->vector.z = vector(2);
-
-    auto result = client->async_send_request(req);
-    if (rclcpp::spin_until_future_complete(temp_node, result) != rclcpp::FutureReturnCode::SUCCESS) {
-      RCLCPP_ERROR_STREAM(node_->get_logger(), "Call to service [" << client->get_service_name() << "] failed.");
-      return;
-    }
-    /// TODO: Okay to terminate without checks?
-
+  auto client = node_->create_client<planner_msgs::srv::SetVector3>(service_name);
+  if (!client->wait_for_service(1s)) {
+    RCLCPP_INFO(node_->get_logger(), service_name.c_str());
     return;
-  });
-  t.detach();
+  }
+  auto req = std::make_shared<planner_msgs::srv::SetVector3::Request>();
+  req->vector.x = vector(0);
+  req->vector.y = vector(1);
+  req->vector.z = vector(2);
+
+  // TODO: this only sort of works, it never gets to the RCLCPP_INFO
+  client->async_send_request(
+      req, [this, service_name](rclcpp::Client<planner_msgs::srv::SetVector3>::SharedFuture future) {
+        auto response = future.get();
+        RCLCPP_INFO(node_->get_logger(), "Service [%s] response: %d", service_name.c_str(), response->success);
+      });
+
+  RCLCPP_INFO_STREAM(node_->get_logger(), "sucessfully called planner service: " << service_name);
+  return;
 }
