@@ -449,6 +449,22 @@ void AdaptiveSnowSampler::startPositionCallback(const std::shared_ptr<planner_ms
   start_position_.z() = map_->getGridMap().atPosition("elevation", start_position_.head(2));
   home_position_ = start_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
 
+  home_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", home_position_.head(2)),
+                                 map_->getGridMap().atPosition("elevation_normal_y", home_position_.head(2)),
+                                 map_->getGridMap().atPosition("elevation_normal_z", home_position_.head(2)));
+
+  home_heading_ = std::atan2(home_normal_.y(), home_normal_.x());
+
+  if (home_normal_.head(2).norm() > 1e-6) {
+    home_slope_ = std::acos(home_normal_.dot(Eigen::Vector3d::UnitZ()) / home_normal_.norm());
+  } else {
+    home_slope_ = 0.0;
+  }
+
+  /// Publish target slope
+  std_msgs::msg::Float64 slope_msg;
+  slope_msg.data = home_slope_ * 180.0 / M_PI;  // rad to deg
+  target_slope_pub_->publish(slope_msg);
   response->success = true;
 }
 
@@ -474,7 +490,7 @@ void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::sr
 
 void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                                        std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
-  callSetAngleService(target_slope_* 180.0 / M_PI);  // Set the landing leg angle to match the slope
+  callSetAngleService(target_slope_ * 180.0 / M_PI);  // Set the landing leg angle to match the slope
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_LAND;
@@ -549,11 +565,11 @@ void AdaptiveSnowSampler::returnCallback(const std::shared_ptr<planner_msgs::srv
                           target_position_latitude, target_position_longitude, target_position_altitude);
   /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   msg.param2 = true;
-  double target_yaw = -target_heading_ - 0.5 * M_PI;
-  while (std::abs(target_yaw) > M_PI) {  // mod2pi
-    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  double home_yaw = -home_heading_ - 0.5 * M_PI;
+  while (std::abs(home_yaw) > M_PI) {  // mod2pi
+    home_yaw = (home_yaw > 0.0) ? home_yaw - M_PI : home_yaw + M_PI;
   }
-  msg.param4 = target_yaw;
+  msg.param4 = home_yaw;
   msg.param5 = target_position_latitude;
   msg.param6 = target_position_longitude;
   double target_position_amsl =
