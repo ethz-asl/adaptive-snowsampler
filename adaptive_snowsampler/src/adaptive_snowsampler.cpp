@@ -278,12 +278,13 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const px4_msgs::msg::VehicleAt
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg) {
   const double vehicle_latitude = msg.lat;
   const double vehicle_longitude = msg.lon;
-  const double vehicle_altitude_amsl = msg.alt;  // Average mean sea level
+  const double vehicle_altitude = msg.alt_ellipsoid;  // Elliposoidal altitude
 
-  const double vehicle_altitude = vehicle_altitude_amsl + GeographicLib::Geoid::GEOIDTOELLIPSOID *
-                                                              (*egm96_5)(vehicle_latitude, vehicle_longitude);  // wgs84
+  // const double vehicle_altitude = vehicle_altitude_amsl + GeographicLib::Geoid::GEOIDTOELLIPSOID *
 
-  // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << std::endl;
+  // std::cout << "amsl: " << vehicle_altitude_amsl << std::endl;
+  // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << " alt: " << vehicle_altitude <<
+  // std::endl;
   // LV03 / WGS84 ellipsoid
   GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude, lv03_vehicle_position_.x(),
                           lv03_vehicle_position_.y(), lv03_vehicle_position_.z());
@@ -320,7 +321,7 @@ void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::msg::DistanceSe
 void AdaptiveSnowSampler::takeMeasurementCallback(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
                                                   snowsampler_msgs::srv::Trigger::Response::SharedPtr response) {
   double ground_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
-  double drone_elevation = vehicle_position_.z();
+  double drone_elevation = lv03_vehicle_position_.z();
   snow_depth_ = drone_elevation - ground_elevation - lidar_distance_;
   RCLCPP_INFO_STREAM(get_logger(), "drone_elevation " << drone_elevation);
   RCLCPP_INFO_STREAM(get_logger(), "ground_elevation " << ground_elevation);
@@ -474,7 +475,7 @@ void AdaptiveSnowSampler::takeoffCallback(const std::shared_ptr<planner_msgs::sr
 
 void AdaptiveSnowSampler::landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
                                        std::shared_ptr<planner_msgs::srv::SetService::Response> response) {
-  callSetAngleService(target_slope_* 180.0 / M_PI);  // Set the landing leg angle to match the slope
+  callSetAngleService(target_slope_ * 180.0 / M_PI);  // Set the landing leg angle to match the slope
   px4_msgs::msg::VehicleCommand msg{};
   msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
   msg.command = px4_msgs::msg::VehicleCommand::VEHICLE_CMD_NAV_LAND;

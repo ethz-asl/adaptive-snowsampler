@@ -14,7 +14,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     """Generate a launch description."""
 
-    default_location = "braemabuel"
+    default_location = "prodkamm_1m_crop"
     default_tif_file = default_location + ".tif"
     default_tif_color_file = default_location + "_color.tif"
 

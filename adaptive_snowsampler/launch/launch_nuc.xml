@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="location" default="braemabuel"/>
+    <arg name="location" default="prodkamm_1m_crop"/>
     <node pkg="tf2_ros" exec="static_transform_publisher" name="world_map" args="--frame-id world --child-frame-id map"/>
 
     <node pkg="adaptive_snowsampler" exec="adaptive_snowsampler" name="snowsampler_node" output="screen">
