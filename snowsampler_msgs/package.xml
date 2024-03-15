@@ -11,14 +11,15 @@
   <author email="chiesc@ethz.ch">Claudio Chies</author>
   <license>BSD</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <depend>rclcpp</depend>
-  <depend>rosidl_default_generators</depend>
-
-  <member_of_group>rosidl_interface_packages</member_of_group>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <depend>std_msgs</depend>
+  <!-- XXX needed for users of mavlink_convert.h
+  <build_export_depend>libmavconn</build_export_depend>
+  -->
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <architecture_independent/>
   </export>
 </package>

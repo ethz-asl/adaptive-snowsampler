@@ -1,19 +1,22 @@
-cmake_minimum_required(VERSION 3.14.4)
+cmake_minimum_required(VERSION 2.8.3)
 project(snowsampler_msgs)
 
-find_package(ament_cmake REQUIRED)
+find_package(catkin REQUIRED COMPONENTS message_generation std_msgs)
 
-find_package(rosidl_default_generators REQUIRED)
+include_directories(include)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  srv/Trigger.srv
-  srv/SetAngle.srv
-  srv/SetMaxSpeed.srv
-  srv/GetPosition.srv
-  srv/TakeMeasurement.srv
-  srv/SetMeasurementDepth.srv
+add_service_files(
+  FILES
+  Trigger.srv
+  SetAngle.srv
+  SetMaxSpeed.srv
+  GetPosition.srv
+  TakeMeasurement.srv
+  SetMeasurementDepth.srv
 )
 
-ament_export_dependencies(rosidl_default_runtime)
+generate_messages(DEPENDENCIES std_msgs)
 
-ament_package()
+catkin_package(
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS message_runtime std_msgs)
