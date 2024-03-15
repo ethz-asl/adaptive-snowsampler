@@ -1,35 +1,25 @@
-<?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
+<package>
   <name>adaptive_snowsampler</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Package for autonomous adpative snow sampling</description>
   <maintainer email="jalim@ethz.ch">jaeyoung</maintainer>
   <license>BSD-3</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
-  <build_depend>rosidl_default_generators</build_depend>
-  <depend>rclcpp</depend>
-  <depend>rclpy</depend>
-  <depend>std_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>snowsampler_msgs</depend>
-  <depend>px4_msgs</depend>
-  <depend>planner_msgs</depend>
-  <depend>tf2_ros</depend>
-  <depend>grid_map_geo</depend>
-  <exec_depend>ros2launch</exec_depend>
-  <exec_depend>rosidl_default_runtime</exec_depend>
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>clang-format</test_depend>
-  
-  <member_of_group>rosidl_interface_packages</member_of_group>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>mavros</build_depend>
+  <build_depend>mavros_extras</build_depend>
+  <build_depend>mavros_msgs</build_depend>
+  <build_depend>eigen_catkin</build_depend>
+  <build_depend>grid_map_geo</build_depend>
+  <build_depend>snowsampler_msgs</build_depend>
+  <build_depend>planner_msgs</build_depend>
+  <build_depend>tf2_ros</build_depend>
   
   <export>
-    <build_type>ament_cmake</build_type>
   </export>
 </package>
