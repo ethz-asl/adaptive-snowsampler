@@ -16,7 +16,10 @@
   <build_depend>mavros_msgs</build_depend>
   <build_depend>eigen_catkin</build_depend>
   <build_depend>grid_map_geo</build_depend>
+  <build_depend>grid_map_ros</build_depend>
+  <build_depend>eigen_catkin</build_depend>
   <build_depend>snowsampler_msgs</build_depend>
+  <run_depend>roscpp</run_depend>
   <build_depend>planner_msgs</build_depend>
   <build_depend>tf2_ros</build_depend>
   

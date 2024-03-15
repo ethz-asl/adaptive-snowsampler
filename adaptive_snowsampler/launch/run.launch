@@ -1,0 +1,11 @@
+<launch>
+    <arg name="rviz" default="true"/>
+    <arg name="location" default="prodkamm_1m_crop"/>
+    <node pkg="tf" type="static_transform_publisher" name="world_map" args="0 0 0 0 0 0 world map 10"/>
+
+    <node pkg="adaptive_snowsampler" type="adaptive_snowsampler" name="snowsampler_node" output="screen">
+        <param name="tif_path" value="$(find adaptive_snowsampler)/resources/$(arg location).tif"/>
+        <param name="tif_color_path" value="$(find adaptive_snowsampler)/resources/$(arg location)_color.tif"/>
+    </node>
+    <!-- <include file="$(find-pkg-share snowsampler_rviz)/launch/rviz.launch.py"/> -->
+</launch>

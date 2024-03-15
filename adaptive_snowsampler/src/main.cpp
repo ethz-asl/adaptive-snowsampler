@@ -41,8 +41,12 @@
 #include "adaptive_snowsampler/adaptive_snowsampler.h"
 
 int main(int argc, char* argv[]) {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<AdaptiveSnowSampler>());
-  rclcpp::shutdown();
+  ros::init(argc, argv, "adaptive_snowsampler");
+  ros::NodeHandle nh("");
+  ros::NodeHandle nh_private("~");
+
+  std::shared_ptr<AdaptiveSnowSampler> adaptive_snowsampler = std::make_shared<AdaptiveSnowSampler>(nh, nh_private);
+
+  ros::spin();
   return 0;
 }

@@ -38,34 +38,41 @@
  *
  */
 
+#include <ros/ros.h>
+#include <ros/callback_queue.h>
+
 #include <Eigen/Dense>
 #include <boost/circular_buffer.hpp>
 #include <chrono>
 #include <functional>
 #include <memory>
-#include <planner_msgs/srv/set_service.hpp>
-#include <planner_msgs/srv/set_vector3.hpp>
 #include <string>
+#include <GeographicLib/Geoid.hpp>
 
-#include "GeographicLib/Geoid.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "grid_map_geo/grid_map_geo.hpp"
-#include "grid_map_msgs/msg/grid_map.h"
-#include "grid_map_ros/GridMapRosConverter.hpp"
-#include "nav_msgs/msg/path.hpp"
-#include "px4_msgs/msg/distance_sensor.hpp"
-#include "px4_msgs/msg/vehicle_attitude.hpp"
-#include "px4_msgs/msg/vehicle_command.hpp"
-#include "px4_msgs/msg/vehicle_global_position.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "snowsampler_msgs/srv/set_angle.hpp"
-#include "snowsampler_msgs/srv/take_measurement.hpp"
-#include "snowsampler_msgs/srv/trigger.hpp"
-#include "std_msgs/msg/float64.hpp"
-#include "std_msgs/msg/int8.hpp"
-#include "std_msgs/msg/string.hpp"
-#include "tf2_ros/transform_broadcaster.h"
-#include "visualization_msgs/msg/marker.hpp"
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Int8.h>
+#include <std_msgs/String.h>
+#include <grid_map_msgs/GridMap.h>
+#include <visualization_msgs/Marker.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <sensor_msgs/NavSatFix.h>
+
+#include <planner_msgs/SetService.h>
+#include <planner_msgs/SetVector3.h>
+#include "snowsampler_msgs/SetAngle.h"
+#include "snowsampler_msgs/TakeMeasurement.h"
+#include "snowsampler_msgs/Trigger.h"
+
+#include <grid_map_ros/GridMapRosConverter.hpp>
+#include <grid_map_geo/grid_map_geo.h>
+
+// #include "px4_msgs/msg/distance_sensor.hpp"
+// #include "px4_msgs/msg/vehicle_attitude.hpp"
+// #include "px4_msgs/msg/vehicle_command.hpp"
+// #include "px4_msgs/msg/vehicle_global_position.hpp"
+
 
 enum SSPState {
   Error,
@@ -83,80 +90,74 @@ using namespace std::chrono_literals;
 /* This example creates a subclass of Node and uses std::bind() to register a
  * member function as a callback from the timer. */
 
-class AdaptiveSnowSampler : public rclcpp::Node {
+class AdaptiveSnowSampler {
  public:
-  AdaptiveSnowSampler();
+  AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private);
 
  private:
   /**
    * @brief Status loop for running decisions
    *
    */
-  void statusloopCallback();
+  void statusloopCallback(const ros::TimerEvent &event);
 
   /**
    * @brief Status loop for running decisions
    *
    */
-  void cmdloopCallback();
+  void cmdloopCallback(const ros::TimerEvent &event);
 
   /**
    * @brief Callback for vehicle attitude
    *
    * @param msg
    */
-  void vehicleAttitudeCallback(const px4_msgs::msg::VehicleAttitude &msg);
+  void vehicleAttitudeCallback(const geometry_msgs::PoseStamped &msg);
 
   /**
    * @brief Callback for vehicle local position
    *
    * @param msg
    */
-  void sspStateCallback(const std_msgs::msg::Int8::SharedPtr msg);
+  void sspStateCallback(const std_msgs::Int8::ConstPtr msg);
 
-  void vehicleGlobalPositionCallback(const px4_msgs::msg::VehicleGlobalPosition &msg);
+  void vehicleGlobalPositionCallback(const sensor_msgs::NavSatFix &msg);
 
-  void distanceSensorCallback(const px4_msgs::msg::DistanceSensor &msg);
+  // void distanceSensorCallback(const px4_msgs::DistanceSensor &msg);
 
-  void startPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
-                             std::shared_ptr<planner_msgs::srv::SetVector3::Response> response);
+  bool startPositionCallback(planner_msgs::SetVector3::Request &request, planner_msgs::SetVector3::Response &response);
 
-  void goalPositionCallback(const std::shared_ptr<planner_msgs::srv::SetVector3::Request> request,
-                            std::shared_ptr<planner_msgs::srv::SetVector3::Response> response);
+  bool goalPositionCallback(planner_msgs::SetVector3::Request &request, planner_msgs::SetVector3::Response &response);
 
-  void takeoffCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
-                       std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+  bool takeoffCallback(planner_msgs::SetService::Request &request, planner_msgs::SetService::Response &response);
 
-  void landCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
-                    std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+  bool landCallback(planner_msgs::SetService::Request &request, planner_msgs::SetService::Response &response);
 
-  void gotoCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
-                    std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+  bool gotoCallback(planner_msgs::SetService::Request &request, planner_msgs::SetService::Response &response);
 
-  void returnCallback(const std::shared_ptr<planner_msgs::srv::SetService::Request> request,
-                      std::shared_ptr<planner_msgs::srv::SetService::Response> response);
+  bool returnCallback(planner_msgs::SetService::Request &request, planner_msgs::SetService::Response &response);
 
   void callSetAngleService(double angle);
 
-  void takeMeasurementCallback(const snowsampler_msgs::srv::Trigger::Request::SharedPtr request,
-                               snowsampler_msgs::srv::Trigger::Response::SharedPtr response);
+  bool takeMeasurementCallback(snowsampler_msgs::Trigger::Request &request,
+                               snowsampler_msgs::Trigger::Response &response);
 
-  void publishTargetNormal(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+  void publishTargetNormal(const ros::Publisher &pub,
                            const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
 
-  void publishSetpointPosition(rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+  void publishSetpointPosition(const ros::Publisher &pub,
                                const Eigen::Vector3d &position,
                                const Eigen::Vector3d color = Eigen::Vector3d(1.0, 1.0, 0.0));
 
-  void publishPositionHistory(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub, const Eigen::Vector3d &position,
-                              std::vector<geometry_msgs::msg::PoseStamped> &history_vector);
+  void publishPositionHistory(const ros::Publisher &pub, const Eigen::Vector3d &position,
+                              std::vector<geometry_msgs::PoseStamped> &history_vector);
 
   void writeLog();
 
   void loadMap();
   void publishMap();
 
-  void tiltCheckCallback();
+  void tiltCheckCallback(const ros::TimerEvent &event);
 
   /**
    * @brief Convert 3D vector into arrow marker
@@ -166,9 +167,9 @@ class AdaptiveSnowSampler : public rclcpp::Node {
    * @param id  marker id
    * @param color  color of the marker
    * @param marker_namespace
-   * @return visualization_msgs::msg::Marker
+   * @return visualization_msgs::Marker
    */
-  visualization_msgs::msg::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
+  visualization_msgs::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
                                                    int id, Eigen::Vector3d color,
                                                    const std::string marker_namespace = "arrow");
   /**
@@ -179,40 +180,51 @@ class AdaptiveSnowSampler : public rclcpp::Node {
    * @param id
    * @param color
    * @param marker_namespace
-   * @return visualization_msgs::msg::Marker
+   * @return visualization_msgs::Marker
    */
-  visualization_msgs::msg::Marker position2SphereMsg(const Eigen::Vector3d &position, int id, Eigen::Vector3d color,
+  visualization_msgs::Marker position2SphereMsg(const Eigen::Vector3d &position, int id, Eigen::Vector3d color,
                                                      const std::string marker_namespace = "sphere");
-  geometry_msgs::msg::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
+  geometry_msgs::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
                                                           const Eigen::Vector4d orientation);
 
-  rclcpp::TimerBase::SharedPtr statusloop_timer_;
-  rclcpp::TimerBase::SharedPtr cmdloop_timer_;
-  rclcpp::TimerBase::SharedPtr measurement_tilt_timer_;
 
-  rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr original_map_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr target_normal_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr setpoint_position_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr home_position_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr target_slope_pub_;
-  rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_command_pub_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr referencehistory_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr snow_depth_pub_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle nh_private_;
 
-  rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
-  rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr vehicle_global_position_sub_;
-  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr ssp_status_sub_;
-  rclcpp::Subscription<px4_msgs::msg::DistanceSensor>::SharedPtr distance_sensor_sub_;
+  ros::Timer statusloop_timer_;
+  ros::Timer  cmdloop_timer_;
+  ros::Timer  measurement_tilt_timer_;
 
-  rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setgoal_serviceserver_;
-  rclcpp::Service<planner_msgs::srv::SetVector3>::SharedPtr setstart_serviceserver_;
-  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr takeoff_serviceserver_;
-  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr land_serviceserver_;
-  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr goto_serviceserver_;
-  rclcpp::Service<planner_msgs::srv::SetService>::SharedPtr return_serviceserver_;
-  rclcpp::Service<snowsampler_msgs::srv::Trigger>::SharedPtr measurement_serviceserver_;
+  ros::CallbackQueue cmdloop_queue_;
+  ros::CallbackQueue statusloop_queue_;
+  ros::CallbackQueue measurementloop_queue_;
+  std::unique_ptr<ros::AsyncSpinner> cmdloop_spinner_;
+  std::unique_ptr<ros::AsyncSpinner> statusloop_spinner_;
+  std::unique_ptr<ros::AsyncSpinner> measurementloop_spinner_;
 
-  rclcpp::Client<snowsampler_msgs::srv::TakeMeasurement>::SharedPtr ssp_measurement_serviceclient_;
+  ros::Publisher original_map_pub_;
+  ros::Publisher target_normal_pub_;
+  ros::Publisher setpoint_position_pub_;
+  ros::Publisher home_position_pub_;
+  ros::Publisher target_slope_pub_;
+  ros::Publisher vehicle_command_pub_;
+  ros::Publisher referencehistory_pub_;
+  ros::Publisher snow_depth_pub_;
+
+  ros::Subscriber vehicle_attitude_sub_;
+  ros::Subscriber vehicle_global_position_sub_;
+  ros::Subscriber ssp_status_sub_;
+  ros::Subscriber distance_sensor_sub_;
+
+  ros::ServiceServer setgoal_serviceserver_;
+  ros::ServiceServer setstart_serviceserver_;
+  ros::ServiceServer takeoff_serviceserver_;
+  ros::ServiceServer land_serviceserver_;
+  ros::ServiceServer goto_serviceserver_;
+  ros::ServiceServer return_serviceserver_;
+  ros::ServiceServer measurement_serviceserver_;
+
+  ros::ServiceClient ssp_measurement_serviceclient_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;
@@ -220,7 +232,7 @@ class AdaptiveSnowSampler : public rclcpp::Node {
   Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d lv03_vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d map_origin_{Eigen::Vector3d{0.0, 0.0, 0.0}};
-  std::vector<geometry_msgs::msg::PoseStamped> positionhistory_vector_;
+  std::vector<geometry_msgs::PoseStamped> positionhistory_vector_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
   boost::circular_buffer<Eigen::Vector3d> vehicle_attitude_buffer_{20};
   Eigen::Vector3d vehicle_attitude_filtered_ref_{Eigen::Vector3d(0.0, 0.0, 0.0)};
