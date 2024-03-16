@@ -1,24 +1,21 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
+<package format="2">
   <name>ssp_bridge</name>
   <version>0.1.1</version>
   <description>a Package to handle the communication between the Snowsmpler and SSP</description>
   <maintainer email="chiesc@ethz.ch">Claudio Chies</maintainer>
   <license>BSD-3</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>rclcpp</depend>
-  <depend>std_msgs</depend>
-  <depend>px4_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>snowsampler_msgs</depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <exec_depend>ros2launch</exec_depend>
-  <exec_depend>serial_driver</exec_depend>
 
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>snowsampler_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>snowsampler_msgs</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>snowsampler_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
 </package>
