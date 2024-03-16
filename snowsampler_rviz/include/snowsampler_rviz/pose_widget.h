@@ -6,7 +6,7 @@
 #include <QLineEdit>
 #include <QStringList>
 #include <QTableWidget>
-#include <mav_msgs/eigen_mav_msgs.hpp>
+#include <mav_msgs/eigen_mav_msgs.h>
 #endif
 
 class QLineEdit;

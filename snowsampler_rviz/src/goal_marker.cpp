@@ -1,13 +1,10 @@
 #include "snowsampler_rviz/goal_marker.h"
 
 #include <functional>
-#include <planner_msgs/srv/set_vector3.hpp>
+#include <thread>
+#include <planner_msgs/SetVector3.h>
 
-using std::placeholders::_1;
-using namespace std::chrono_literals;
-
-GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node) : node_(node), marker_server_("goal", node) {
-  // marker_server_.applyChanges();
+GoalMarker::GoalMarker(const ros::NodeHandle &nh) : nh_(nh), marker_server_("goal") {
 
   set_goal_marker_.header.frame_id = "map";
   set_goal_marker_.name = "set_pose";
@@ -20,15 +17,12 @@ GoalMarker::GoalMarker(rclcpp::Node::SharedPtr node) : node_(node), marker_serve
   set_goal_marker_.controls.push_back(makeMenuControl());
 
   marker_server_.insert(set_goal_marker_);
-  marker_server_.setCallback(set_goal_marker_.name, std::bind(&GoalMarker::processSetPoseFeedback, this, _1));
+  marker_server_.setCallback(set_goal_marker_.name, boost::bind(&GoalMarker::processSetPoseFeedback, this, _1));
 
   initializeMenu();
   menu_handler_.apply(marker_server_, "set_pose");
   marker_server_.applyChanges();
-  rclcpp::QoS latching_qos(1);
-  latching_qos.best_effort().durability_volatile();
-  grid_map_sub_ = node_->create_subscription<grid_map_msgs::msg::GridMap>(
-      "/elevation_map", latching_qos, std::bind(&GoalMarker::GridmapCallback, this, _1));
+  grid_map_sub_ = nh_.subscribe("/elevation_map", 1, &GoalMarker::GridmapCallback, this, ros::TransportHints().tcpNoDelay());
 }
 
 GoalMarker::~GoalMarker() = default;
@@ -55,9 +49,9 @@ void GoalMarker::setGoalPosition(const Eigen::Vector2d &position) {
 }
 
 void GoalMarker::processSetPoseFeedback(
-    const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
+    const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
   const std::lock_guard<std::mutex> lock(goal_mutex_);
-  if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE) {
+  if (feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE) {
     set_goal_marker_.pose = feedback->pose;
     Eigen::Vector2d marker_position_2d(set_goal_marker_.pose.position.x, set_goal_marker_.pose.position.y);
     if (map_.isInside(marker_position_2d)) {
@@ -71,7 +65,7 @@ void GoalMarker::processSetPoseFeedback(
   marker_server_.applyChanges();
 }
 
-void GoalMarker::GridmapCallback(const grid_map_msgs::msg::GridMap &msg) {
+void GoalMarker::GridmapCallback(const grid_map_msgs::GridMap &msg) {
   const std::lock_guard<std::mutex> lock(goal_mutex_);
   grid_map::GridMapRosConverter::fromMessage(msg, map_);
   Eigen::Vector2d marker_position_2d(set_goal_marker_.pose.position.x, set_goal_marker_.pose.position.y);
@@ -87,22 +81,22 @@ void GoalMarker::GridmapCallback(const grid_map_msgs::msg::GridMap &msg) {
   marker_server_.applyChanges();
 }
 
-visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMovePlaneControl() {
+visualization_msgs::InteractiveMarkerControl GoalMarker::makeMovePlaneControl() {
   const double kSqrt2Over2 = sqrt(2.0) / 2.0;
-  visualization_msgs::msg::InteractiveMarkerControl control;
+  visualization_msgs::InteractiveMarkerControl control;
   control.orientation.w = kSqrt2Over2;
   control.orientation.x = 0;
   control.orientation.y = kSqrt2Over2;
   control.orientation.z = 0;
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_PLANE;
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_PLANE;
   control.name = "move plane";
   return control;
 }
 
-visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMenuControl() {
-  visualization_msgs::msg::Marker marker;
+visualization_msgs::InteractiveMarkerControl GoalMarker::makeMenuControl() {
+  visualization_msgs::Marker marker;
   double scale = 10.0;
-  marker.type = visualization_msgs::msg::Marker::SPHERE;
+  marker.type = visualization_msgs::Marker::SPHERE;
   marker.scale.x = scale;
   marker.scale.y = scale;
   marker.scale.z = scale;
@@ -111,8 +105,8 @@ visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMenuControl() 
   marker.color.b = 0.0;
   marker.color.a = 1.0;
 
-  visualization_msgs::msg::InteractiveMarkerControl control;
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MENU;
+  visualization_msgs::InteractiveMarkerControl control;
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MENU;
   control.always_visible = true;
   control.name = "goal menu";
   control.markers.push_back(marker);
@@ -121,44 +115,41 @@ visualization_msgs::msg::InteractiveMarkerControl GoalMarker::makeMenuControl() 
 }
 
 void GoalMarker::initializeMenu() {
-  using namespace std::placeholders;
 
   menu_handler_first_entry_ =
-      menu_handler_.insert("Set Vehicle Position as Home", std::bind(&GoalMarker::setStartCallback, this, _1));
+      menu_handler_.insert("Set Vehicle Position as Home", std::bind(&GoalMarker::setStartCallback, this, std::placeholders::_1));
 
-  menu_handler_.insert("Set as Goal", std::bind(&GoalMarker::setGoalCallback, this, _1));
+  menu_handler_.insert("Set as Goal", std::bind(&GoalMarker::setGoalCallback, this, std::placeholders::_1));
 }
 
-void GoalMarker::setStartCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
+void GoalMarker::setStartCallback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
   callPlannerService("/set_start", goal_pos_);
   menu_handler_.reApply(marker_server_);
   marker_server_.applyChanges();
 }
 
-void GoalMarker::setGoalCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback) {
+void GoalMarker::setGoalCallback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
   callPlannerService("/set_goal", goal_pos_);
   menu_handler_.reApply(marker_server_);
   marker_server_.applyChanges();
 }
 
 void GoalMarker::callPlannerService(const std::string service_name, const Eigen::Vector3d vector) {
-  auto client = node_->create_client<planner_msgs::srv::SetVector3>(service_name);
-  if (!client->wait_for_service(1s)) {
-    RCLCPP_INFO(node_->get_logger(), service_name.c_str());
-    return;
-  }
-  auto req = std::make_shared<planner_msgs::srv::SetVector3::Request>();
-  req->vector.x = vector(0);
-  req->vector.y = vector(1);
-  req->vector.z = vector(2);
-
-  // TODO: this only sort of works, it never gets to the RCLCPP_INFO
-  client->async_send_request(
-      req, [this, service_name](rclcpp::Client<planner_msgs::srv::SetVector3>::SharedFuture future) {
-        auto response = future.get();
-        RCLCPP_INFO(node_->get_logger(), "Service [%s] response: %d", service_name.c_str(), response->success);
-      });
-
-  RCLCPP_INFO_STREAM(node_->get_logger(), "sucessfully called planner service: " << service_name);
+  std::cout << "Planner Service" << std::endl;
+  std::thread t([service_name, vector] {
+    planner_msgs::SetVector3 req;
+    req.request.vector.x = vector(0);
+    req.request.vector.y = vector(1);
+    req.request.vector.z = vector(2);
+    try {
+      ROS_DEBUG_STREAM("Service name: " << service_name);
+      if (!ros::service::call(service_name, req)) {
+        std::cout << "Couldn't call service: " << service_name << std::endl;
+      }
+    } catch (const std::exception& e) {
+      std::cout << "Service Exception: " << e.what() << std::endl;
+    }
+  });
+  t.detach();
   return;
 }

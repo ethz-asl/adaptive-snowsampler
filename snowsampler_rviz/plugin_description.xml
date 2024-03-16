@@ -1,11 +1,9 @@
-<library path="snowsampler_rviz">
-
+<library path="libsnowsampler_rviz">
   <class name="snowsampler_rviz/PlanningPanel"
          type="snowsampler_rviz::PlanningPanel"
-         base_class_type="rviz_common::Panel">
+         base_class_type="rviz::Panel">
     <description>
       A panel that allows easy control for the snow sampler.
     </description>
   </class>
-
-`</library>
+</library>

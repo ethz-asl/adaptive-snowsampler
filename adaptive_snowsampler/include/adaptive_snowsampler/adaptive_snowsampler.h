@@ -225,6 +225,8 @@ class AdaptiveSnowSampler {
   ros::ServiceServer measurement_serviceserver_;
 
   ros::ServiceClient ssp_measurement_serviceclient_;
+  ros::ServiceClient mavcmd_long_service_client_;
+  ros::ServiceClient mavcmd_int_service_client_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> map_tf_broadcaster_;

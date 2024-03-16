@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.8)
 project(adaptive_snowsampler)
+add_definitions(-std=c++17)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
 
 # find dependencies
 find_package(Eigen3)
+find_package(GeographicLib REQUIRED)
+include(CheckGeographicLibDatasets)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf

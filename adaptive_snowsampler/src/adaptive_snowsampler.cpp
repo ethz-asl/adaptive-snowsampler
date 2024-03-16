@@ -44,9 +44,15 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_ros/static_transform_broadcaster.h"
 
+#include <mavros_msgs/CommandCode.h>
+#include <mavros_msgs/CommandLong.h>
+#include <mavros_msgs/CommandInt.h>
+#include <mavros_msgs/Waypoint.h>
+#include <thread>
+
 AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private) :
   nh_(nh), nh_private_(nh_private) {
-  // egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
+  egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
 
   // Publishers
   original_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("elevation_map", 1);
@@ -60,15 +66,16 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   snow_depth_pub_ = nh_.advertise<std_msgs::Float64>("/snow_depth", 1);
 
   // Subscribers
-  // vehicle_global_position_sub_ = this->create_subscription<px4_msgs::VehicleGlobalPosition>(
-  //     "/fmu/out/vehicle_global_position", qos_profile,
-  //     std::bind(&AdaptiveSnowSampler::vehicleGlobalPositionCallback, this, std::placeholders::_1));
-  // vehicle_attitude_sub_ = this->create_subscription<px4_msgs::VehicleAttitude>(
-  //     "/fmu/out/vehicle_attitude", qos_profile,
-  //     std::bind(&AdaptiveSnowSampler::vehicleAttitudeCallback, this, std::placeholders::_1));
+  vehicle_global_position_sub_ = nh_.subscribe("mavros/global_position/global", 1, &AdaptiveSnowSampler::vehicleGlobalPositionCallback, this,
+                                     ros::TransportHints().tcpNoDelay());
+  vehicle_attitude_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &AdaptiveSnowSampler::vehicleAttitudeCallback, this,
+                                    ros::TransportHints().tcpNoDelay());
   // distance_sensor_sub_ = this->create_subscription<px4_msgs::DistanceSensor>(
   //     "/fmu/out/distance_sensor", qos_profile,
   //     std::bind(&AdaptiveSnowSampler::distanceSensorCallback, this, std::placeholders::_1));
+  mavcmd_long_service_client_ = nh_.serviceClient<mavros_msgs::CommandLong>("mavros/cmd/command");
+  mavcmd_int_service_client_ = nh_.serviceClient<mavros_msgs::CommandInt>("mavros/cmd/command_int");
+
   ssp_status_sub_ = nh_.subscribe(
       "/SSP/state", 10, &AdaptiveSnowSampler::sspStateCallback, this, ros::TransportHints().tcpNoDelay());
 
@@ -115,7 +122,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   measurementloop_spinner_.reset(new ros::AsyncSpinner(1, &measurementloop_queue_));
   measurementloop_spinner_->start();
   
-  // tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>();
   nh_private.param<std::string>("tif_path", file_path_, ".");
   nh_private.param<std::string>("tif_color_path", color_path_, ".");
   nh_private.param<std::string>("frame_id", frame_id_, "map");
@@ -130,7 +137,9 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   sspLogfile_.open(sspLogfilePath_, std::ofstream::out | std::ofstream::app);
 }
 
-void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {}
+void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {
+  publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+}
 
 void AdaptiveSnowSampler::statusloopCallback(const ros::TimerEvent &event) {
   if (!map_initialized_) {
@@ -142,7 +151,6 @@ void AdaptiveSnowSampler::statusloopCallback(const ros::TimerEvent &event) {
   publishSetpointPosition(setpoint_position_pub_, setpoint_positon_);
   publishSetpointPosition(home_position_pub_, home_position_, Eigen::Vector3d(1.0, 0.0, 0.0));
   publishTargetNormal(target_normal_pub_, target_position_ + 20.0 * target_normal_, -20.0 * target_normal_);
-  publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
 }
 
 visualization_msgs::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Vector3d &position,
@@ -196,10 +204,10 @@ visualization_msgs::Marker AdaptiveSnowSampler::position2SphereMsg(const Eigen::
   marker.pose.position.x = position.x();
   marker.pose.position.y = position.y();
   marker.pose.position.z = position.z();
-  marker.scale.x = 10.0;
-  marker.scale.y = 10.0;
-  marker.scale.z = 10.0;
-  marker.color.a = 1.0;
+  marker.scale.x = 5.0;
+  marker.scale.y = 5.0;
+  marker.scale.z = 5.0;
+  marker.color.a = 0.5;
   marker.color.r = color(0);
   marker.color.g = color(1);
   marker.color.b = color(2);
@@ -235,8 +243,8 @@ void AdaptiveSnowSampler::publishSetpointPosition(const ros::Publisher &pub,
 }
 
 void AdaptiveSnowSampler::loadMap() {
-  // RCLCPP_INFO_STREAM(get_logger(), "file_path " << file_path_);
-  // RCLCPP_INFO_STREAM(get_logger(), "color_path " << color_path_);
+  std::cout << "file_path " << file_path_ << std::endl;
+  std::cout << "color_path " << color_path_ << std::endl;
 
   map_ = std::make_shared<GridMapGeo>(frame_id_);
   map_->Load(file_path_, color_path_);
@@ -244,61 +252,55 @@ void AdaptiveSnowSampler::loadMap() {
 }
 
 void AdaptiveSnowSampler::publishMap() {
-  // map_tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-  // grid_map_msgs::GridMap msg;
-  // grid_map::GridMapRosConverter::toMessage(map_->getGridMap(), msg);
-  // msg->header.stamp = ros::Time::now();
-  // original_map_pub_.publish(msg);
-  // ESPG epsg;
-  // Eigen::Vector3d map_origin;
-  // map_->getGlobalOrigin(epsg, map_origin);
-  // map_origin_ = map_origin;
+  static tf2_ros::StaticTransformBroadcaster static_broadcaster;
 
-  // geometry_msgs::TransformStamped static_transformStamped_;
-  // static_transformStamped_.header.frame_id = map_->getCoordinateName();
-  // static_transformStamped_.child_frame_id = map_->getGridMap().getFrameId();
-  // static_transformStamped_.transform.translation.x = map_origin.x();
-  // static_transformStamped_.transform.translation.y = map_origin.y();
-  // static_transformStamped_.transform.translation.z = 0.0;
-  // static_transformStamped_.transform.rotation.x = 0.0;
-  // static_transformStamped_.transform.rotation.y = 0.0;
-  // static_transformStamped_.transform.rotation.z = 0.0;
-  // static_transformStamped_.transform.rotation.w = 1.0;
+  grid_map_msgs::GridMap msg;
+  grid_map::GridMapRosConverter::toMessage(map_->getGridMap(), msg);
+  original_map_pub_.publish(msg);
+  ESPG epsg;
+  Eigen::Vector3d map_origin;
+  map_->getGlobalOrigin(epsg, map_origin);
+  map_origin_ = map_origin;
 
-  // map_tf_broadcaster_->sendTransform(static_transformStamped_);
+  geometry_msgs::TransformStamped static_transformStamped_;
+  static_transformStamped_.header.stamp = ros::Time::now();
+  static_transformStamped_.header.frame_id = "CH1903";
+  static_transformStamped_.child_frame_id = "map";
+  static_transformStamped_.transform.translation.x = map_origin.x();
+  static_transformStamped_.transform.translation.y = map_origin.y();
+  static_transformStamped_.transform.translation.z = 0.0;
+  static_transformStamped_.transform.rotation.x = 0.0;
+  static_transformStamped_.transform.rotation.y = 0.0;
+  static_transformStamped_.transform.rotation.z = 0.0;
+  static_transformStamped_.transform.rotation.w = 1.0;
+
+  static_broadcaster.sendTransform(static_transformStamped_);
 }
 
 void AdaptiveSnowSampler::vehicleAttitudeCallback(const geometry_msgs::PoseStamped &msg) {
-  // /// Switch vehicle orientation from NED to ENU
-  // Eigen::Quaterniond vehicle_attitude;
-  // vehicle_attitude.w() = msg.q[0];
-  // vehicle_attitude.x() = msg.q[1];
-  // vehicle_attitude.y() = -msg.q[2];
-  // vehicle_attitude.z() = -msg.q[3];
-  // const Eigen::Quaterniond attitude_offset{std::cos(0.5 * 0.5 * M_PI), 0.0, 0.0, std::sin(0.5 * 0.5 * M_PI)};
-  // vehicle_attitude_ = attitude_offset * vehicle_attitude;
+  Eigen::Quaterniond vehicle_attitude;
+  vehicle_attitude.w() = msg.pose.orientation.w;
+  vehicle_attitude.x() = msg.pose.orientation.x;
+  vehicle_attitude.y() = msg.pose.orientation.y;
+  vehicle_attitude.z() = msg.pose.orientation.z;
 
-  // // add value to the moving average filters
-  // vehicle_attitude_buffer_.push_back(vehicle_attitude_.toRotationMatrix().eulerAngles(0, 1, 2));
+  vehicle_attitude_ = vehicle_attitude;
+  // add value to the moving average filters
+  vehicle_attitude_buffer_.push_back(vehicle_attitude_.toRotationMatrix().eulerAngles(0, 1, 2));
 }
 
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSatFix &msg) {
-  // const double vehicle_latitude = msg.lat;
-  // const double vehicle_longitude = msg.lon;
-  // const double vehicle_altitude = msg.alt_ellipsoid;  // Elliposoidal altitude
+  const double vehicle_latitude = msg.latitude;
+  const double vehicle_longitude = msg.longitude;
+  const double vehicle_altitude = msg.altitude;  // Elliposoidal altitude
 
-  // const double vehicle_altitude = vehicle_altitude_amsl + GeographicLib::Geoid::GEOIDTOELLIPSOID *
-
-  // std::cout << "amsl: " << vehicle_altitude_amsl << std::endl;
-  // std::cout << "lat: " << vehicle_latitude << " lon: " << vehicle_longitude << " alt: " << vehicle_altitude <<
-  // std::endl;
   // LV03 / WGS84 ellipsoid
-  // GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude, lv03_vehicle_position_.x(),
-  //                         lv03_vehicle_position_.y(), lv03_vehicle_position_.z());
+  GeoConversions::forward(vehicle_latitude, vehicle_longitude, vehicle_altitude, lv03_vehicle_position_.x(),
+                          lv03_vehicle_position_.y(), lv03_vehicle_position_.z());
 
   geometry_msgs::TransformStamped t;
   // corresponding tf variables
-  // t.header.stamp = this->get_clock()->now();
+  t.header.stamp = ros::Time::now();
   t.header.frame_id = "CH1903";
   t.child_frame_id = "base_link";
 
@@ -319,7 +321,7 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSa
   t.transform.rotation.w = vehicle_attitude_.w();
 
   // Send the transformation
-  tf_broadcaster_->sendTransform(t);
+  // tf_broadcaster_->sendTransform(t);
 }
 // void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::DistanceSensor &msg) {
 //   lidar_distance_ = msg.current_distance;
@@ -327,43 +329,36 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSa
 
 bool AdaptiveSnowSampler::takeMeasurementCallback(snowsampler_msgs::Trigger::Request &request,
                                                   snowsampler_msgs::Trigger::Response &response) {
-  // double ground_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
-  // double drone_elevation = lv03_vehicle_position_.z();
-  // snow_depth_ = drone_elevation - ground_elevation - lidar_distance_;
-  // // RCLCPP_INFO_STREAM(get_logger(), "drone_elevation " << drone_elevation);
-  // // RCLCPP_INFO_STREAM(get_logger(), "ground_elevation " << ground_elevation);
-  // // RCLCPP_INFO_STREAM(get_logger(), "lidar_distance " << lidar_distance_);
+  double ground_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
+  double drone_elevation = lv03_vehicle_position_.z();
+  snow_depth_ = drone_elevation - ground_elevation - lidar_distance_;
+  std::cout << "  - drone_elevation: " << drone_elevation << std::endl;
+  std::cout << "  - ground_elevation: " << ground_elevation << std::endl;
+  std::cout << "  - lidar_distance: " << lidar_distance_ << std::endl;
 
-  // std_msgs::Float64 msg;
-  // msg.data = snow_depth_;
-  // snow_depth_pub_.publish(msg);
-  // tilt_prevention_ = true;
+  std_msgs::Float64 msg;
+  msg.data = snow_depth_;
+  snow_depth_pub_.publish(msg);
+  tilt_prevention_ = true;
 
-  // ssp_measurement_serviceclient_ = this->create_client<snowsampler_msgs::TakeMeasurement>("/SSP/take_measurement");
-  // auto request_ssp = std::make_shared<snowsampler_msgs::TakeMeasurement::Request>();
-  // request_ssp->id = sspLogId_;
+  std::string service_name = "/SSP/take_measurement";
+  int id = sspLogId_;
 
-  // while (!ssp_measurement_serviceclient_->wait_for_service(std::chrono::seconds(1))) {
-  //   if (!rclcpp::ok()) {
-  //     // RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
-  //     response->success = false;
-  //     return;
-  //   }
-  //   RCLCPP_INFO(this->get_logger(), "Waiting for service to appear...");
-  // }
-  // auto result_future = ssp_measurement_serviceclient_->async_send_request(
-  //     request_ssp, [this, response](rclcpp::Client<snowsampler_msgs::TakeMeasurement>::SharedFuture future) {
-  //       if (future.get()->success) {
-  //         RCLCPP_INFO(this->get_logger(), "Measurement taken successfully");
-  //         writeLog();
-  //         response->success = true;
-  //       } else {
-  //         RCLCPP_ERROR(this->get_logger(), "Failed to call service");
-  //         response->success = false;
-  //         sspLogfile_ << "Measurement " << sspLogId_ << " failed" << std::endl;
-  //       }
-  //     });
-  // response->success = true;
+  std::thread t([service_name, id] {
+    snowsampler_msgs::TakeMeasurement req;
+    req.request.id = id;
+    try {
+      ROS_DEBUG_STREAM("Service name: " << service_name);
+      if (!ros::service::call(service_name, req)) {
+        std::cout << "Couldn't call service: " << service_name << std::endl;
+      }
+    } catch (const std::exception& e) {
+      std::cout << "Service Exception: " << e.what() << std::endl;
+      std::cout << "  - measurement ID : " << id << " failed" << std::endl;
+    }
+  });
+  t.detach();
+  return true;
 }
 
 void AdaptiveSnowSampler::sspStateCallback(const std_msgs::Int8::ConstPtr msg) {
@@ -388,222 +383,217 @@ void AdaptiveSnowSampler::sspStateCallback(const std_msgs::Int8::ConstPtr msg) {
 }
 
 void AdaptiveSnowSampler::tiltCheckCallback(const ros::TimerEvent &event) {
-  // if (tilt_prevention_) {
-  //   RCLCPP_INFO_ONCE(get_logger(), "Tilt prevention is active");
-  //   Eigen::Vector3d sum(0.0, 0.0, 0.0);
-  //   for (int i = vehicle_attitude_buffer_.size() - tilt_window_size_; i < vehicle_attitude_buffer_.size(); i++) {
-  //     sum += vehicle_attitude_buffer_[i];
-  //   }
-  //   Eigen::Vector3d vehicle_attitude_filtered = sum / tilt_window_size_;
+  if (tilt_prevention_) {
+    std::cout << "Tilt prevention is active" << std::endl;
+    Eigen::Vector3d sum(0.0, 0.0, 0.0);
+    for (int i = vehicle_attitude_buffer_.size() - tilt_window_size_; i < vehicle_attitude_buffer_.size(); i++) {
+      sum += vehicle_attitude_buffer_[i];
+    }
+    Eigen::Vector3d vehicle_attitude_filtered = sum / tilt_window_size_;
 
-  //   // check if the drone is tilting too much
-  //   if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
-  //     // stop measurement
-  //     RCLCPP_INFO_STREAM(get_logger(), "drone is tilting, stopping measurement");
-  //     RCLCPP_INFO_STREAM(
-  //         get_logger(), "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff());
+    // check if the drone is tilting too much
+    if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
+      // stop measurement
+      std::cout << "drone is tilting, stopping measurement" << std::endl;
+      std::cout << "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() << std::endl;
 
-  //     auto client = this->create_client<snowsampler_msgs::Trigger>("SSP/stop_measurement");
-  //     auto request = std::make_shared<snowsampler_msgs::Trigger::Request>();
-  //     using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::SetAngle>::SharedFuture;
-  //     auto response_received_callback = [this](ServiceResponseFuture future) { auto result = future.get(); };
-  //     auto result_future = client->async_send_request(request);
-
-  //     tilt_prevention_ = false;
-  //   }
-  // }
+      std::string service_name = "SSP/stop_measurement";
+      std::thread t([service_name] {
+        snowsampler_msgs::Trigger req;
+        try {
+          ROS_DEBUG_STREAM("Service name: " << service_name);
+          if (!ros::service::call(service_name, req)) {
+            std::cout << "Couldn't call service: " << service_name << std::endl;
+          }
+        } catch (const std::exception& e) {
+          std::cout << "Service Exception: " << e.what() << std::endl;
+        }
+      });
+      t.detach();
+      tilt_prevention_ = false;
+    }
+  }
 }
 
 /// TODO: Add service caller for setting start and goal states
 
 bool AdaptiveSnowSampler::goalPositionCallback(planner_msgs::SetVector3::Request &request,
                                                planner_msgs::SetVector3::Response &response) {
-  // response->success = true;
-  // target_position_.x() = request->vector.x;
-  // target_position_.y() = request->vector.y;
+  response.success = true;
+  target_position_.x() = request.vector.x;
+  target_position_.y() = request.vector.y;
 
-  // target_position_.z() = map_->getGridMap().atPosition("elevation", target_position_.head(2));
-  // target_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", target_position_.head(2)),
-  //                                  map_->getGridMap().atPosition("elevation_normal_y", target_position_.head(2)),
-  //                                  map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
-  // setpoint_positon_ = target_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
+  target_position_.z() = map_->getGridMap().atPosition("elevation", target_position_.head(2));
+  target_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", target_position_.head(2)),
+                                   map_->getGridMap().atPosition("elevation_normal_y", target_position_.head(2)),
+                                   map_->getGridMap().atPosition("elevation_normal_z", target_position_.head(2)));
+  setpoint_positon_ = target_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
 
-  // target_heading_ = std::atan2(target_normal_.y(), target_normal_.x());
+  target_heading_ = std::atan2(target_normal_.y(), target_normal_.x());
 
-  // if (target_normal_.norm() > 1e-6) {
-  //   target_slope_ = std::acos(target_normal_.dot(Eigen::Vector3d::UnitZ()) / target_normal_.norm());
-  // } else {
-  //   target_slope_ = 0.0;
-  // }
+  if (target_normal_.norm() > 1e-6) {
+    target_slope_ = std::acos(target_normal_.dot(Eigen::Vector3d::UnitZ()) / target_normal_.norm());
+  } else {
+    target_slope_ = 0.0;
+  }
 
-  // // RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Heading: " << target_heading_);
-  // double target_yaw = -target_heading_ - 0.5 * M_PI;
-  // while (std::abs(target_yaw) > M_PI) {  // mod2pi
-  //   target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
-  // }
-  // // RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Slope: " << target_slope_);
+  // RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Heading: " << target_heading_);
+  double target_yaw = -target_heading_ - 0.5 * M_PI;
+  while (std::abs(target_yaw) > M_PI) {  // mod2pi
+    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  }
+  // RCLCPP_INFO_STREAM(get_logger(), "  - Vehicle Target Slope: " << target_slope_);
 
-  // /// Publish target slope
-  // std_msgs::Float64 slope_msg;
-  // slope_msg.data = target_slope_ * 180.0 / M_PI;  // rad to deg
-  // target_slope_pub_->publish(slope_msg);
+  /// Publish target slope
+  std_msgs::Float64 slope_msg;
+  slope_msg.data = target_slope_ * 180.0 / M_PI;  // rad to deg
+  target_slope_pub_.publish(slope_msg);
+  return true;
 }
 
 bool AdaptiveSnowSampler::startPositionCallback(planner_msgs::SetVector3::Request &request,
                                                 planner_msgs::SetVector3::Response &response) {
-  // start_position_.x() = vehicle_position_.x();
-  // start_position_.y() = vehicle_position_.y();
+  start_position_.x() = vehicle_position_.x();
+  start_position_.y() = vehicle_position_.y();
 
-  // start_position_.z() = map_->getGridMap().atPosition("elevation", start_position_.head(2));
-  // home_position_ = start_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
-
-  // response->success = true;
+  start_position_.z() = map_->getGridMap().atPosition("elevation", start_position_.head(2));
+  home_position_ = start_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
+  
+  response.success = true;
+  return true;
 }
 
 bool AdaptiveSnowSampler::takeoffCallback(planner_msgs::SetService::Request &request,
                                           planner_msgs::SetService::Response &response) {
-  // px4_msgs::VehicleCommand msg{};
-  // msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
-  // msg.command = px4_msgs::VehicleCommand::VEHICLE_CMD_NAV_TAKEOFF;
-  // msg.param1 = -1;
-  // msg.param5 = NAN;
-  // msg.param6 = NAN;
-  // msg.param7 = vehicle_position_.z() + relative_altitude_;
-  // // RCLCPP_INFO_STREAM(get_logger(), "Vehicle commanded altitude: " << vehicle_position_.z() + relative_altitude_);
-  // msg.target_system = 1;
-  // msg.target_component = 1;
-  // msg.source_system = 1;
-  // msg.source_component = 1;
-  // msg.from_external = true;
-  // vehicle_command_pub_->publish(msg);
+  mavros_msgs::CommandLong msg;
+  msg.request.command = mavros_msgs::CommandCode::NAV_TAKEOFF;
+  msg.request.param1 = -1;
+  msg.request.param5 = NAN;
+  msg.request.param6 = NAN;
+  msg.request.param7 = vehicle_position_.z() + relative_altitude_;
+  std::cout << "Vehicle commanded altitude: " << vehicle_position_.z() + relative_altitude_ << std::endl;
+  mavcmd_long_service_client_.call(msg);
 
-  // response->success = true;
+  response.success = true;
+  return true;
 }
 
 bool AdaptiveSnowSampler::landCallback(planner_msgs::SetService::Request &request,
                                        planner_msgs::SetService::Response &response) {
-  // callSetAngleService(target_slope_ * 180.0 / M_PI);  // Set the landing leg angle to match the slope
-  // px4_msgs::VehicleCommand msg{};
-  // msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
-  // msg.command = px4_msgs::VehicleCommand::VEHICLE_CMD_NAV_LAND;
-  // msg.target_system = 1;
-  // msg.target_component = 1;
-  // msg.source_system = 1;
-  // msg.source_component = 1;
-  // msg.from_external = true;
+  callSetAngleService(target_slope_ * 180.0 / M_PI);  // Set the landing leg angle to match the slope
 
-  // vehicle_command_pub_->publish(msg);
+  mavros_msgs::CommandLong msg;
+  msg.request.command = mavros_msgs::CommandCode::NAV_LAND;
+  msg.request.param5 = NAN;
+  msg.request.param6 = NAN;
+  msg.request.param7 = NAN;
+  mavcmd_long_service_client_.call(msg);
 
-  // response->success = true;
+  response.success = true;
+  return true;
 }
 
 bool AdaptiveSnowSampler::gotoCallback(planner_msgs::SetService::Request &request,
                                        planner_msgs::SetService::Response &response) {
-  // callSetAngleService(neutral_angle_);  // Set the landing leg angle to the neutral angle
-  // px4_msgs::VehicleCommand msg{};
-  // msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
-  // msg.command = px4_msgs::VehicleCommand::VEHICLE_CMD_DO_REPOSITION;
-  // msg.target_system = 1;
-  // msg.target_component = 1;
-  // msg.source_system = 1;
-  // msg.source_component = 1;
-  // msg.from_external = true;
+  callSetAngleService(neutral_angle_);  // Set the landing leg angle to the neutral angle
 
-  // /// TODO: transform target position to wgs84 and amsl
-  // Eigen::Vector3d target_position_lv03 = target_position_ + map_origin_;
-  // double target_position_latitude;
-  // double target_position_longitude;
-  // double target_position_altitude;
-  // target_position_lv03.z() = target_position_lv03.z() + relative_altitude_;
-  // GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
-  //                         target_position_latitude, target_position_longitude, target_position_altitude);
+  mavros_msgs::CommandLong msg;
+  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION;
+
+  // transform target position to wgs84 and amsl
+  Eigen::Vector3d target_position_lv03 = target_position_ + map_origin_;
+  double target_position_latitude;
+  double target_position_longitude;
+  double target_position_altitude;
+  target_position_lv03.z() = target_position_lv03.z() + relative_altitude_;
+  GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
+                          target_position_latitude, target_position_longitude, target_position_altitude);
   // /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
-  // msg.param2 = true;
-  // double target_yaw = -target_heading_ - 0.5 * M_PI;
-  // while (std::abs(target_yaw) > M_PI) {  // mod2pi
-  //   target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
-  // }
-  // msg.param4 = target_yaw;
-  // msg.param5 = target_position_latitude;
-  // msg.param6 = target_position_longitude;
-  // double target_position_amsl =
-  //     target_position_altitude -
-  //     GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
+  msg.request.param2 = true;
+  double target_yaw = -target_heading_ - 0.5 * M_PI;
+  while (std::abs(target_yaw) > M_PI) {  // mod2pi
+    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  }
+  msg.request.param4 = target_yaw;
+  msg.request.param5 = target_position_latitude;
+  msg.request.param6 = target_position_longitude;
+  double target_position_amsl =
+      target_position_altitude -
+      GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
 
-  // msg.param7 = target_position_amsl;
-
-  // vehicle_command_pub_->publish(msg);
-
-  // response->success = true;
+  msg.request.param7 = target_position_amsl;
+  mavcmd_long_service_client_.call(msg);
+  response.success = true;
+  return true;
 }
 
 bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &request,
                                          planner_msgs::SetService::Response &response) {
-  // px4_msgs::VehicleCommand msg{};
-  // msg.timestamp = int(this->get_clock()->now().nanoseconds() / 1000);
-  // msg.command = px4_msgs::VehicleCommand::VEHICLE_CMD_DO_REPOSITION;
-  // msg.target_system = 1;
-  // msg.target_component = 1;
-  // msg.source_system = 1;
-  // msg.source_component = 1;
-  // msg.from_external = true;
+  mavros_msgs::CommandLong msg;
+  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION;
 
-  // /// TODO: transform target position to wgs84 and amsl
-  // Eigen::Vector3d home_position_lv03 = home_position_ + map_origin_;
-  // double target_position_latitude;
-  // double target_position_longitude;
-  // double target_position_altitude;
-  // GeoConversions::reverse(home_position_lv03.x(), home_position_lv03.y(), home_position_lv03.z(),
-  //                         target_position_latitude, target_position_longitude, target_position_altitude);
-  // /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
-  // msg.param2 = true;
-  // double target_yaw = -target_heading_ - 0.5 * M_PI;
-  // while (std::abs(target_yaw) > M_PI) {  // mod2pi
-  //   target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
-  // }
-  // msg.param4 = target_yaw;
-  // msg.param5 = target_position_latitude;
-  // msg.param6 = target_position_longitude;
-  // double target_position_amsl =
-  //     target_position_altitude -
-  //     GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
+  // Transform target position to wgs84 and amsl
+  Eigen::Vector3d home_position_lv03 = home_position_ + map_origin_;
+  double target_position_latitude;
+  double target_position_longitude;
+  double target_position_altitude;
+  GeoConversions::reverse(home_position_lv03.x(), home_position_lv03.y(), home_position_lv03.z(),
+                          target_position_latitude, target_position_longitude, target_position_altitude);
+  /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
+  msg.request.param2 = true;
+  double target_yaw = -target_heading_ - 0.5 * M_PI;
+  while (std::abs(target_yaw) > M_PI) {  // mod2pi
+    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  }
+  msg.request.param4 = target_yaw;
+  msg.request.param5 = target_position_latitude;
+  msg.request.param6 = target_position_longitude;
+  double target_position_amsl =
+      target_position_altitude -
+      GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
 
-  // msg.param7 = target_position_amsl;
+  msg.request.param7 = target_position_amsl;
 
-  // vehicle_command_pub_->publish(msg);
+  mavcmd_long_service_client_.call(msg);
 
-  // response->success = true;
+  response.success = true;
+  return true;
 }
 
 void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub,
                                                  const Eigen::Vector3d &position,
                                                  std::vector<geometry_msgs::PoseStamped> &history_vector) {
-  // unsigned int posehistory_window_ = 200;
-  // Eigen::Vector4d vehicle_attitude(1.0, 0.0, 0.0, 0.0);
-  // history_vector.insert(history_vector.begin(), vector3d2PoseStampedMsg(position, vehicle_attitude));
-  // if (history_vector.size() > posehistory_window_) {
-  //   history_vector.pop_back();
-  // }
+  unsigned int posehistory_window_ = 200;
+  Eigen::Vector4d vehicle_attitude(1.0, 0.0, 0.0, 0.0);
+  history_vector.insert(history_vector.begin(), vector3d2PoseStampedMsg(position, vehicle_attitude));
+  if (history_vector.size() > posehistory_window_) {
+    history_vector.pop_back();
+  }
 
-  // nav_msgs::Path msg;
-  // msg.header.stamp = ros::Time::now();
-  // msg.header.frame_id = "map";
-  // msg.poses = history_vector;
+  nav_msgs::Path msg;
+  msg.header.stamp = ros::Time::now();
+  msg.header.frame_id = "map";
+  msg.poses = history_vector;
 
-  // pub->publish(msg);
+  pub.publish(msg);
 }
 
 void AdaptiveSnowSampler::callSetAngleService(double angle) {
-  // // RCLCPP_INFO_ONCE(this->get_logger(), "Calling service");
-  // auto client = this->create_client<snowsampler_msgs::SetAngle>("snowsampler/set_landing_leg_angle");
-  // auto request = std::make_shared<snowsampler_msgs::SetAngle::Request>();
-  // request->angle = angle;
-  // using ServiceResponseFuture = rclcpp::Client<snowsampler_msgs::SetAngle>::SharedFuture;
-  // auto response_received_callback = [this](ServiceResponseFuture future) {
-  //   auto result = future.get();
-  //   // RCLCPP_INFO_ONCE(this->get_logger(), "Service response: %s", result->success ? "true" : "false");
-  // };
-  // auto result_future = client->async_send_request(request);
+  std::cout << "Calling service" << std::endl;
+  std::string service_name = "snowsampler/set_landing_leg_angle";
+  std::thread t([service_name, angle] {
+    snowsampler_msgs::SetAngle req;
+    req.request.angle = angle;
+    try {
+      ROS_DEBUG_STREAM("Service name: " << service_name);
+      if (!ros::service::call(service_name, req)) {
+        std::cout << "Couldn't call service: " << service_name << std::endl;
+      }
+    } catch (const std::exception& e) {
+      std::cout << "Service Exception: " << e.what() << std::endl;
+    }
+  });
+  t.detach();
 }
 
 void AdaptiveSnowSampler::writeLog() {
@@ -611,12 +601,11 @@ void AdaptiveSnowSampler::writeLog() {
     sspLogfile_ << "Measurement " << sspLogId_ << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
                 << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
                 << ", with snowdepth: " << snow_depth_ << std::endl;
-    // RCLCPP_INFO_STREAM(get_logger(), "Measurement " << sspLogId_
-    //                                                 << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
-    //                                                 << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
-    //                                                 << ", with snowdepth: " << snow_depth_);
+    std::cout << "Measurement " << sspLogId_ << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
+                << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
+                                                    << ", with snowdepth: " << snow_depth_<< std::endl;
     sspLogId_++;
   } else {
-    // RCLCPP_ERROR(get_logger(), "Could not open logfile");
+    std::cout << "Could not open logfile" << std::endl;
   }
 }

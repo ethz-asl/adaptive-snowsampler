@@ -2,49 +2,48 @@
 #ifndef snowsampler_rviz_GOAL_MARKER_H_
 #define snowsampler_rviz_GOAL_MARKER_H_
 
-#include <visualization_msgs/msg/interactive_marker_feedback.h>
+#include <visualization_msgs/InteractiveMarkerFeedback.h>
 
 #include <Eigen/Dense>
 #include <grid_map_core/GridMap.hpp>
-#include <grid_map_msgs/msg/grid_map.hpp>
+#include <grid_map_msgs/GridMap.h>
 #include <grid_map_ros/GridMapRosConverter.hpp>
-#include <interactive_markers/interactive_marker_server.hpp>
+#include <interactive_markers/interactive_marker_server.h>
 #include <mutex>
-#include <rclcpp/rclcpp.hpp>
 
-#include "interactive_markers/menu_handler.hpp"
+#include "interactive_markers/menu_handler.h"
 
 class GoalMarker {
  public:
-  GoalMarker(rclcpp::Node::SharedPtr node);
+  GoalMarker(const ros::NodeHandle &nh);
   virtual ~GoalMarker();
   Eigen::Vector3d getGoalPosition() { return goal_pos_; };
   void setGoalPosition(const Eigen::Vector2d &position);
 
  private:
-  Eigen::Vector3d toEigen(const geometry_msgs::msg::Pose &p) {
+  Eigen::Vector3d toEigen(const geometry_msgs::Pose &p) {
     Eigen::Vector3d position(p.position.x, p.position.y, p.position.z);
     return position;
   }
-  void processSetPoseFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
-  void GridmapCallback(const grid_map_msgs::msg::GridMap &msg);
+  void processSetPoseFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+  void GridmapCallback(const grid_map_msgs::GridMap &msg);
 
   void initializeMenu();
 
-  void setStartCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
-  void setGoalCallback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback);
+  void setStartCallback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+  void setGoalCallback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
 
   void callPlannerService(const std::string service_name, const Eigen::Vector3d vector);
 
-  visualization_msgs::msg::InteractiveMarkerControl makeMovePlaneControl();
-  visualization_msgs::msg::InteractiveMarkerControl makeMenuControl();
+  visualization_msgs::InteractiveMarkerControl makeMovePlaneControl();
+  visualization_msgs::InteractiveMarkerControl makeMenuControl();
 
-  rclcpp::Node::SharedPtr node_;
-  rclcpp::Subscription<grid_map_msgs::msg::GridMap>::SharedPtr grid_map_sub_;
+  ros::NodeHandle nh_;
+  ros::Subscriber grid_map_sub_;
   // rclcpp::Client<>::SharedPtr goal_serviceclient_;
 
   interactive_markers::InteractiveMarkerServer marker_server_;
-  visualization_msgs::msg::InteractiveMarker set_goal_marker_;
+  visualization_msgs::InteractiveMarker set_goal_marker_;
   interactive_markers::MenuHandler menu_handler_;
   interactive_markers::MenuHandler::EntryHandle menu_handler_first_entry_;
   interactive_markers::MenuHandler::EntryHandle menu_handler_mode_last_;
