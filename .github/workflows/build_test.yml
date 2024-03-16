@@ -23,12 +23,16 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install Dependencies
       working-directory: 
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         apt update
         apt install -y python3-wstool python3-catkin-tools git
       shell: bash
     - name: Build Test
       working-directory: 
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         mkdir -p $HOME/catkin_ws/src;
         cd $HOME/catkin_ws
