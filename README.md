@@ -2,6 +2,8 @@
 
 # adaptive_snowsampler
 
+[![ROS1 Build Test](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/actions/workflows/build_test.yml/badge.svg)](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/actions/workflows/build_test.yml)
+
 ![rviz](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/assets/5248102/117a296d-01ad-4209-bec7-fb14267628e0)
 ## Installation
 ```
