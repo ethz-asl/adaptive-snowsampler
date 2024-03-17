@@ -11,12 +11,20 @@ include(CheckGeographicLibDatasets)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rospy
   tf
   grid_map_geo
   grid_map_ros
   eigen_catkin
   interactive_markers
   planner_msgs
+  snowsampler_msgs
+)
+
+execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -m pip install --no-warn-script-location -r "${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt"
+    RESULT_VARIABLE _pip_install_result
+    OUTPUT_VARIABLE _pip_install_output
 )
 
 catkin_package(
@@ -32,6 +40,9 @@ include_directories(
   ${GeographicLib_INCLUDE_DIRS}
 )
 
+catkin_install_python(PROGRAMS 
+  scripts/snowsampler_lac.py 
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 include_directories(
   include
