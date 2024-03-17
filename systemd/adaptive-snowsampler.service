@@ -3,8 +3,8 @@ Description=Launch SnowSampler Drone node as a service
 After=network.target systemd-udevd.service
 
 [Service]
-EnvironmentFile=/home/user/ros2_ws/src/adaptive-snowsampler/systemd/environment.conf
-ExecStart=/bin/bash /home/user/ros2_ws/src/adaptive-snowsampler/systemd/run_controller.sh
+EnvironmentFile=/home/user/catkin_ws/src/adaptive-snowsampler/systemd/environment.conf
+ExecStart=/bin/bash /home/user/catkin_ws/src/adaptive-snowsampler/systemd/run_controller.sh
 User=user
 Group=user
 

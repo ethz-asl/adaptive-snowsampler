@@ -1,3 +1,0 @@
-<launch>
-  <node name="ssp_bridge_node" pkg="ssp_bridge" type="ssp_bridge.py" output="screen"/>  
-</launch>

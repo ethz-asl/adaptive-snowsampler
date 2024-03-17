@@ -2,5 +2,5 @@
 
 set -e
 
-source $HOME/ros2_ws/install/setup.bash
-ros2 launch adaptive_snowsampler launch_nuc.xml
+source $HOME/catkin_ws/devel/setup.bash
+roslaunch adaptive_snowsampler run.launch

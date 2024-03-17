@@ -30,7 +30,7 @@ class SSPState:
 
 
 class SSPBridge:
-    def __init__(self, port="/dev/ttyUSB0", baud_rate=115200):
+    def __init__(self, port="/dev/ttySsp", baud_rate=115200):
         self.state_ = SSPState.Error
         self.position_ = 0.0
         self.port = port

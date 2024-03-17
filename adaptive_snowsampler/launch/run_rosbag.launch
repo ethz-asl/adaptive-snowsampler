@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="rosbag" type="record" name="rosbag_recorder" args="record -o /home/user/rosbag/
+        /snowsampler/landing_leg_angle
+        /target_slope
+        /target_normal
+        /tf
+        /fmu/out/vehicle_global_position
+        /fmu/out/vehicle_attitude
+        /fmu/out/distance_sensor
+        /elevation_map"/>
+</launch>

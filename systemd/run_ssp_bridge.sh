@@ -2,5 +2,5 @@
 
 set -e
 
-source $HOME/ros2_ws/install/setup.bash
-ros2 launch ssp_bridge launch.xml
+source $HOME/catkin_ws/devel/setup.bash
+roslaunch ssp_bridge run.launch
