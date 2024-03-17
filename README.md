@@ -8,24 +8,22 @@
 ## Installation
 ```
 cd ~
-mkdir ros2_ws/src
-cd ros2_ws/src
-git clone https://github.com/Jaeyoung-Lim/adaptive-snowsampler.git
-git clone https://github.com/PX4/px4_msgs.git
+mkdir -p catkin_ws/src
+cd catkin_ws/src
+git clone https://github.com/Jaeyoung-Lim/adaptive-snowsampler.git -b ros1
 git clone https://github.com/ethz-asl/grid_map_geo.git
-git clone https://github.com/ethz-asl/mav_comm.git -b ros2
-git clone https://github.com/ethz-asl/terrain-navigation.git -b ros2
-git clone https://github.com/ros-drivers/transport_drivers.git
+git clone https://github.com/ethz-asl/mav_comm.git
+git clone https://github.com/ethz-asl/terrain-navigation.git
 cd ..
 sudo rosdep init
 rosdep update
 rosdep install --from-paths src --ignore-src -y
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to snowsampler_rviz adaptive_snowsampler ssp_bridge
+catkin build 
 
 
 # post building tasks
 echo 'ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="fc5f", GROUP="dialout"' | sudo tee /etc/udev/rules.d/99-actuonix.rules #setting usb permissions
-sudo usermod -aG dialout # add user to the dailout group
+sudo usermod -aG dialout user # add user to the dailout group
 sudo reboot # needed for the usb permissions to take effect
 
 # installation of GeographicLib dependency
@@ -64,5 +62,5 @@ ros2 launch adaptive_snowsampler launch.xml
 
 ## Setting the leg angle manually:
 ```
-ros2 service call /snowsampler/set_landing_leg_angle snowsampler_msgs/srv/SetAngle '{"angle":35}'
+rosservice call /snowsampler/set_landing_leg_angle  "35.0"
 ```
