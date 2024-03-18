@@ -461,7 +461,23 @@ bool AdaptiveSnowSampler::startPositionCallback(planner_msgs::SetVector3::Reques
 
   start_position_.z() = map_->getGridMap().atPosition("elevation", start_position_.head(2));
   home_position_ = start_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_);
-  
+
+  home_normal_ = Eigen::Vector3d(map_->getGridMap().atPosition("elevation_normal_x", home_position_.head(2)),
+                                 map_->getGridMap().atPosition("elevation_normal_y", home_position_.head(2)),
+                                 map_->getGridMap().atPosition("elevation_normal_z", home_position_.head(2)));
+
+  home_heading_ = std::atan2(home_normal_.y(), home_normal_.x());
+
+  if (home_normal_.head(2).norm() > 1e-6) {
+    home_slope_ = std::acos(home_normal_.dot(Eigen::Vector3d::UnitZ()) / home_normal_.norm());
+  } else {
+    home_slope_ = 0.0;
+  }
+
+  /// Publish target slope
+  std_msgs::Float64 slope_msg;
+  slope_msg.data = home_slope_ * 180.0 / M_PI;  // rad to deg
+  target_slope_pub_.publish(slope_msg);
   response.success = true;
   return true;
 }
@@ -533,8 +549,8 @@ bool AdaptiveSnowSampler::gotoCallback(planner_msgs::SetService::Request &reques
 bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &request,
                                          planner_msgs::SetService::Response &response) {
   mavros_msgs::CommandLong msg;
-  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION;
-
+  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION; 
+  callSetAngleService(home_slope_ * 180.0 / M_PI);  // Adjust the legs for the Home slope
   // Transform target position to wgs84 and amsl
   Eigen::Vector3d home_position_lv03 = home_position_ + map_origin_;
   double target_position_latitude;
@@ -544,11 +560,11 @@ bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &requ
                           target_position_latitude, target_position_longitude, target_position_altitude);
   /// TODO: Do I need to send average mean sea level altitude? or ellipsoidal?
   msg.request.param2 = true;
-  double target_yaw = -target_heading_ - 0.5 * M_PI;
-  while (std::abs(target_yaw) > M_PI) {  // mod2pi
-    target_yaw = (target_yaw > 0.0) ? target_yaw - M_PI : target_yaw + M_PI;
+  double home_yaw = -home_heading_ - 0.5 * M_PI;
+  while (std::abs(home_yaw) > M_PI) {  // mod2pi
+    home_yaw = (home_yaw > 0.0) ? home_yaw - M_PI : home_yaw + M_PI;
   }
-  msg.request.param4 = target_yaw;
+  msg.request.param4 = home_yaw;
   msg.request.param5 = target_position_latitude;
   msg.request.param6 = target_position_longitude;
   double target_position_amsl =

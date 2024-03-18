@@ -251,6 +251,7 @@ class AdaptiveSnowSampler {
   Eigen::Vector3d setpoint_positon_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d home_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+  Eigen::Vector3d home_normal_{Eigen::Vector3d(0.0, 0.0, 0.0)};
 
   // tilt prevention parameters
   double tilt_treshold_{0.035};  // ~2deg
@@ -259,6 +260,8 @@ class AdaptiveSnowSampler {
 
   double target_heading_{0.0};
   double target_slope_{0.0};
+  double home_heading_{0.0};
+  double home_slope_{0.0};
   const float neutral_angle_ = 35;
   double relative_altitude_ = 20.0;
   std::shared_ptr<GridMapGeo> map_;
