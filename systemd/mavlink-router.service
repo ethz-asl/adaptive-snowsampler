@@ -1,0 +1,10 @@
+[Unit]
+Description=Launch mavlink router as a service
+After=network.target systemd-udevd.service
+
+[Service]
+ExecStart=/usr/bin/mavlink-routerd -c /home/user/catkin_ws/src/adaptive-snowsampler/systemd/mavlinkrouter.config
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
