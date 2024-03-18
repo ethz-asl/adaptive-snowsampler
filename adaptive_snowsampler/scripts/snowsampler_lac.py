@@ -330,28 +330,13 @@ class SnowsamplerLAC:
         self.lac.set_extend_limit(self.stroke_max)
 
         # Start the node's main loop
-        self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_current_angle)
+        self.timer = rospy.Timer(rospy.Duration(1), self.publish_current_angle)
         rospy.loginfo("snowsampler_lac node has been started")
 
     def set_angle_callback(self, request):
-        self.timer.shutdown()
         # Call the set_position function of the LAC class
         l_act = self.angle_to_length(request.angle)
         resp = self.lac.set_position(l_act)
-        timeout = 10  # seconds
-        start_time = time.time()
-        while np.abs(self.current_angle - request.angle) > 0.1:
-            # Timeout if the LAC is not able to reach the desired position
-            if time.time() - start_time > timeout:
-                return False
-
-            resp = self.lac.set_position(l_act)
-            self.current_angle = self.length_to_angle(resp[1] / 1023 * self.stroke)
-            msg = Float64()
-            msg.data = self.current_angle
-            self.angle_publisher.publish(msg)
-
-        self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_current_angle)
         return True
 
     def publish_current_angle(self, event):
