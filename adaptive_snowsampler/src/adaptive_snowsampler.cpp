@@ -39,6 +39,7 @@
  */
 
 #include "adaptive_snowsampler/adaptive_snowsampler.h"
+#include "adaptive_snowsampler/visualization.h"
 
 #include "adaptive_snowsampler/geo_conversions.h"
 #include "tf2/LinearMath/Quaternion.h"
@@ -48,6 +49,7 @@
 #include <mavros_msgs/CommandLong.h>
 #include <mavros_msgs/CommandInt.h>
 #include <mavros_msgs/Waypoint.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <thread>
 
 AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private) :
@@ -61,9 +63,9 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   home_position_pub_ = nh_.advertise<visualization_msgs::Marker>("home_position", 1);
   home_position_pub_ = nh_.advertise<visualization_msgs::Marker>("home_position", 1);
   target_slope_pub_ = nh_.advertise<std_msgs::Float64>("target_slope", 1);
-  // vehicle_command_pub_ = nh_.advertise<px4_msgs::VehicleCommand>("/fmu/in/vehicle_command", 1);
   referencehistory_pub_ = nh_.advertise<nav_msgs::Path>("reference/path", 1);
   snow_depth_pub_ = nh_.advertise<std_msgs::Float64>("/snow_depth", 1);
+  vehicle_pose_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("vehicle_pose_marker", 1);
 
   // Subscribers
   vehicle_global_position_sub_ = nh_.subscribe("mavros/global_position/global", 1, &AdaptiveSnowSampler::vehicleGlobalPositionCallback, this,
@@ -139,6 +141,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
 
 void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {
   publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+  publishVehiclePose(vehicle_pose_pub_, vehicle_position_, vehicle_attitude_);
 }
 
 void AdaptiveSnowSampler::statusloopCallback(const ros::TimerEvent &event) {
@@ -180,7 +183,7 @@ visualization_msgs::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Ve
   marker.scale.x = 2.0 * std::min(normal.norm(), 1.0);
   marker.scale.y = 2.0 * std::min(normal.norm(), 2.0);
   marker.scale.z = 0.0;
-  marker.color.a = 1.0;
+  marker.color.a = 0.8;
   marker.color.r = color(0);
   marker.color.g = color(1);
   marker.color.b = color(2);
@@ -563,7 +566,7 @@ bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &requ
 void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub,
                                                  const Eigen::Vector3d &position,
                                                  std::vector<geometry_msgs::PoseStamped> &history_vector) {
-  unsigned int posehistory_window_ = 200;
+  unsigned int posehistory_window_ = 2000;
   Eigen::Vector4d vehicle_attitude(1.0, 0.0, 0.0, 0.0);
   history_vector.insert(history_vector.begin(), vector3d2PoseStampedMsg(position, vehicle_attitude));
   if (history_vector.size() > posehistory_window_) {
