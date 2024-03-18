@@ -5,8 +5,7 @@
         /target_slope
         /target_normal
         /tf
-        /fmu/out/vehicle_global_position
-        /fmu/out/vehicle_attitude
-        /fmu/out/distance_sensor
+        /mavros/global_position/global
+        /mavros/local_position/pose
         /elevation_map"/>
 </launch>
