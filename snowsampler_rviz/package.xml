@@ -18,6 +18,7 @@
   <depend>visualization_msgs</depend>
   <depend>mavros_msgs</depend>
   <depend>planner_msgs</depend>
+  <depend>snowsampler_msgs</depend>
   <depend>grid_map_core</depend>
   <depend>grid_map_ros</depend>
   <depend>rviz</depend>

@@ -64,3 +64,12 @@ ros2 launch adaptive_snowsampler launch.xml
 ```
 rosservice call /snowsampler/set_landing_leg_angle  "35.0"
 ```
+
+## Running the ground station
+
+To control the vehicle from the ground, we need to connect to the ROS Master on the drone.
+Run rviz with the following command.
+```
+ROS_MASTER_URI=http://172.30.132.111:11311
+roslaunch snowsampler_rviz run.launch
+```
