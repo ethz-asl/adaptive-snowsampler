@@ -74,6 +74,7 @@ class SSPBridge:
         self.serial_subscriber_ = rospy.Subscriber(
             "serial_read", UInt8MultiArray, self.process_serial
         )
+        rospy.loginfo("ssp_bridge sucessfuly started")
 
     def start_serial(self):
         """Starts the reading thread."""
@@ -89,7 +90,7 @@ class SSPBridge:
         """Writes data to the serial device."""
         if self.running:
             self.serial.write(f"{data}\n".encode())
-        rospy.loginfo("Sent: " + data)
+        # rospy.loginfo("Sent: " + data)
 
     def take_measurement_service(self, req):
         self.write_serial("take measurement:" + str(req.id))
@@ -121,7 +122,7 @@ class SSPBridge:
             if self.serial.in_waiting:
                 data = self.serial.readline().decode().strip()
                 if data:  # If data is not empty
-                    print(f"Received: {data}")
+                    # print(f"Received: {data}")
                     self.process_serial(data)
 
     def process_serial(self, out_str):
@@ -143,8 +144,8 @@ class SSPBridge:
                 state_num = int(state_str)
                 position = float(position_str)
 
-                rospy.loginfo("state_: %d", state_num)
-                rospy.loginfo("position_: %f", position)
+                #rospy.loginfo("state_: %d", state_num)
+                #rospy.loginfo("position_: %f", position)
 
                 # Update state and position if valid
                 if 0 <= state_num < SSPState.ENUM_LENGTH:
