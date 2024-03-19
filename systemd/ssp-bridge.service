@@ -1,6 +1,7 @@
 [Unit]
 Description=Launch SSP Bridge node as a service
 After=network.target systemd-udevd.service
+Requires=udev.service
 
 [Service]
 EnvironmentFile=/home/user/catkin_ws/src/adaptive-snowsampler/systemd/environment.conf
@@ -9,4 +10,4 @@ User=user
 Group=user
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target udev.service

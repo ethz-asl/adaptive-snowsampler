@@ -118,7 +118,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   statusloop_spinner_->start();
 
   ros::TimerOptions measurementtilttimer_options(
-      ros::Duration(1.0), boost::bind(&AdaptiveSnowSampler::tiltCheckCallback, this, _1), &measurementloop_queue_);
+      ros::Duration(0.1), boost::bind(&AdaptiveSnowSampler::tiltCheckCallback, this, _1), &measurementloop_queue_);
   measurement_tilt_timer_ = nh_.createTimer(measurementtilttimer_options);  // Define timer for constant loop rate
 
   measurementloop_spinner_.reset(new ros::AsyncSpinner(1, &measurementloop_queue_));
