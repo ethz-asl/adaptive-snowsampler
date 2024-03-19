@@ -146,7 +146,7 @@ class PlanningPanel : public rviz::Panel {
 
   // tf2 stuff:
   tf2_ros::Buffer tf_buffer_;
-  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  tf2_ros::TransformListener tf_listener_;
 
   SSPState ssp_state_{Error};
   QLabel* ssp_state_label_;

@@ -60,13 +60,6 @@ cs_add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES})
 
 
-############
-# BINARIES #
-############
-cs_add_executable(standalone_test
-  src/standalone_test.cpp
-)
-target_link_libraries(standalone_test ${PROJECT_NAME})
 
 ##########
 # EXPORT #

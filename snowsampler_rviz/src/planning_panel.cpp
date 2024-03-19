@@ -36,9 +36,7 @@
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent)
-    : rviz::Panel(parent), nh_(ros::NodeHandle())
-      // tf_buffer_(std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME)),
-      // tf_listener_(std::make_shared<tf2_ros::TransformListener>(tf_buffer_)) 
+    : rviz::Panel(parent), nh_(ros::NodeHandle()), tf_listener_(tf_buffer_)
       {
         createLayout();
 
@@ -153,23 +151,23 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   connect(set_planner_state_buttons_[2], SIGNAL(released()), this, SLOT(setPlannerModeServiceGoTo()));
   connect(set_planner_state_buttons_[3], SIGNAL(released()), this, SLOT(setPlannerModeServiceReturn()));
 
-  // connect(set_goal_button_, &QPushButton::clicked, [this, goal_x_input_, goal_y_input_]() {
-  //   bool ok_x, ok_y;
-  //   double x_ch1903 = goal_x_input_->text().toDouble(&ok_x);
-  //   double y_ch1903 = goal_y_input_->text().toDouble(&ok_y);
-  //   // transform CH1903 to map frame
-  //   geometry_msgs::TransformStamped ch1903_to_map_transform;
-  //   if (ok_x && ok_y && getCH1903ToMapTransform(ch1903_to_map_transform)) {
-  //     // transforms are already in negative direction so add instead of subtract
-  //     double x = x_ch1903 + ch1903_to_map_transform.transform.translation.x;
-  //     double y = y_ch1903 + ch1903_to_map_transform.transform.translation.y;
+  connect(set_goal_button_, &QPushButton::clicked, [this, goal_x_input_, goal_y_input_]() {
+    bool ok_x, ok_y;
+    double x_ch1903 = goal_x_input_->text().toDouble(&ok_x);
+    double y_ch1903 = goal_y_input_->text().toDouble(&ok_y);
+    // transform CH1903 to map frame
+    geometry_msgs::TransformStamped ch1903_to_map_transform;
+    if (ok_x && ok_y && getCH1903ToMapTransform(ch1903_to_map_transform)) {
+      // transforms are already in negative direction so add instead of subtract
+      double x = x_ch1903 - ch1903_to_map_transform.transform.translation.x;
+      double y = y_ch1903 - ch1903_to_map_transform.transform.translation.y;
 
-  //     goal_marker_->setGoalPosition(Eigen::Vector2d(x, y));
-  //     RCLCPP_INFO_STREAM(node_->get_logger(), "Goal position set to: " << x_ch1903 << "," << y_ch1903);
-  //   } else {
-  //     RCLCPP_ERROR(node_->get_logger(), "Invalid input for goal coordinates.");
-  //   }
-  // });
+      goal_marker_->setGoalPosition(Eigen::Vector2d(x, y));
+      std::cout << "Goal position set to: " << x_ch1903 << "," << y_ch1903 << std::endl;
+    } else {
+      std::cout << "Invalid input for goal coordinates." << std::endl;
+    }
+  });
 
   return groupBox;
 }
@@ -337,13 +335,13 @@ void PlanningPanel::callSetAngleService(double angle) {
 }
 
 bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::TransformStamped& transform) {
-  // try {
-  //   transform = tf_buffer_.lookupTransform("map", "CH1903", tf2::TimePointZero);
-  //   return true;
-  // } catch (tf2::TransformException& ex) {
-  //   RCLCPP_ERROR(node_->get_logger(), "Could not get CH1903 to map transform: %s", ex.what());
-  //   return false;
-  // }
+  try {
+    transform = tf_buffer_.lookupTransform("CH1903", "map", ros::Time(0));
+    return true;
+  } catch (tf2::TransformException& ex) {
+    std::cout << "Could not get CH1903 to map transform: " << ex.what() << std::endl;
+    return false;
+  }
 }
 
 }  // namespace snowsampler_rviz

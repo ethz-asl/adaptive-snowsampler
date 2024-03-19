@@ -21,6 +21,7 @@
   <depend>snowsampler_msgs</depend>
   <depend>grid_map_core</depend>
   <depend>grid_map_ros</depend>
+  <depend>grid_map_geo</depend>
   <depend>rviz</depend>
 
   <export>
