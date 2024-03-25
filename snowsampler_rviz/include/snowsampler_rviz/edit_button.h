@@ -2,9 +2,10 @@
 #define snowsampler_rviz_EDIT_BUTTON_H_
 
 #ifndef Q_MOC_RUN
+#include <mav_msgs/eigen_mav_msgs.h>
+
 #include <QPushButton>
 #include <QWidget>
-#include <mav_msgs/eigen_mav_msgs.h>
 #endif
 
 namespace snowsampler_rviz {

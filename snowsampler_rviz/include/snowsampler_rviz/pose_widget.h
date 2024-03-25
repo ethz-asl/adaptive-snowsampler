@@ -2,11 +2,12 @@
 #define snowsampler_rviz_POSE_WIDGET_H_
 
 #ifndef Q_MOC_RUN
+#include <mav_msgs/eigen_mav_msgs.h>
+
 #include <QItemDelegate>
 #include <QLineEdit>
 #include <QStringList>
 #include <QTableWidget>
-#include <mav_msgs/eigen_mav_msgs.h>
 #endif
 
 class QLineEdit;

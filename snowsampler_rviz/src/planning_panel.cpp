@@ -1,5 +1,6 @@
 #include "snowsampler_rviz/planning_panel.h"
 
+#include <geometry_msgs/Twist.h>
 #include <stdio.h>
 
 #include <QCheckBox>
@@ -11,7 +12,6 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <functional>
-#include <geometry_msgs/Twist.h>
 #include <thread>
 // #include <mav_planning_msgs/PlannerService.h>
 // #include <ros/names.h>
@@ -35,24 +35,21 @@
 
 namespace snowsampler_rviz {
 
-PlanningPanel::PlanningPanel(QWidget* parent)
-    : rviz::Panel(parent), nh_(ros::NodeHandle()), tf_listener_(tf_buffer_)
-      {
-        createLayout();
-
-      }
+PlanningPanel::PlanningPanel(QWidget* parent) : rviz::Panel(parent), nh_(ros::NodeHandle()), tf_listener_(tf_buffer_) {
+  createLayout();
+}
 
 void PlanningPanel::onInitialize() {
   goal_marker_ = std::make_shared<GoalMarker>(nh_);
 
   leg_angle_sub_ = nh_.subscribe("/snowsampler/landing_leg_angle", 1, &PlanningPanel::legAngleCallback, this,
-                                     ros::TransportHints().tcpNoDelay());
-  target_angle_sub_ = nh_.subscribe("/target_slope", 1, &PlanningPanel::targetAngleCallback, this,
-                                     ros::TransportHints().tcpNoDelay());
-  snow_depth_subscriber_ = nh_.subscribe("/snow_depth", 1, &PlanningPanel::snowDepthCallback, this,
-                                     ros::TransportHints().tcpNoDelay());
-  ssp_state_sub_ = nh_.subscribe("/SSP/state", 1, &PlanningPanel::sspStateCallback, this,
-                                     ros::TransportHints().tcpNoDelay());
+                                 ros::TransportHints().tcpNoDelay());
+  target_angle_sub_ =
+      nh_.subscribe("/target_slope", 1, &PlanningPanel::targetAngleCallback, this, ros::TransportHints().tcpNoDelay());
+  snow_depth_subscriber_ =
+      nh_.subscribe("/snow_depth", 1, &PlanningPanel::snowDepthCallback, this, ros::TransportHints().tcpNoDelay());
+  ssp_state_sub_ =
+      nh_.subscribe("/SSP/state", 1, &PlanningPanel::sspStateCallback, this, ros::TransportHints().tcpNoDelay());
 }
 
 void PlanningPanel::createLayout() {
@@ -348,4 +345,3 @@ bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::TransformStamped& tra
 
 #include <pluginlib/class_list_macros.hpp>  // NOLINT
 PLUGINLIB_EXPORT_CLASS(snowsampler_rviz::PlanningPanel, rviz::Panel)
-

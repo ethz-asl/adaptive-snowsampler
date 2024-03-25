@@ -2,13 +2,13 @@
 #ifndef snowsampler_rviz_GOAL_MARKER_H_
 #define snowsampler_rviz_GOAL_MARKER_H_
 
+#include <grid_map_msgs/GridMap.h>
+#include <interactive_markers/interactive_marker_server.h>
 #include <visualization_msgs/InteractiveMarkerFeedback.h>
 
 #include <Eigen/Dense>
 #include <grid_map_core/GridMap.hpp>
-#include <grid_map_msgs/GridMap.h>
 #include <grid_map_ros/GridMapRosConverter.hpp>
-#include <interactive_markers/interactive_marker_server.h>
 #include <mutex>
 
 #include "interactive_markers/menu_handler.h"

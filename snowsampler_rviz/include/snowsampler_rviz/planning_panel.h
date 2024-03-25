@@ -2,6 +2,8 @@
 #define snowsampler_rviz_PLANNING_PANEL_H_
 
 #ifndef Q_MOC_RUN
+#include <planner_msgs/NavigationStatus.h>
+#include <rviz/panel.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -9,8 +11,6 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QTimer>
-#include <planner_msgs/NavigationStatus.h>
-#include <rviz/panel.h>
 
 #include "geometry_msgs/PoseStamped.h"
 #include "mav_msgs/conversions.h"

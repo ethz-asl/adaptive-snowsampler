@@ -38,41 +38,38 @@
  *
  */
 
-#include <ros/ros.h>
-#include <ros/callback_queue.h>
-
-#include <Eigen/Dense>
-#include <boost/circular_buffer.hpp>
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
-#include <GeographicLib/Geoid.hpp>
-
 #include <geometry_msgs/PoseStamped.h>
+#include <grid_map_geo/grid_map_geo.h>
+#include <grid_map_msgs/GridMap.h>
 #include <nav_msgs/Path.h>
+#include <planner_msgs/SetService.h>
+#include <planner_msgs/SetVector3.h>
+#include <ros/callback_queue.h>
+#include <ros/ros.h>
+#include <sensor_msgs/NavSatFix.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/String.h>
-#include <grid_map_msgs/GridMap.h>
-#include <visualization_msgs/Marker.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <sensor_msgs/NavSatFix.h>
+#include <visualization_msgs/Marker.h>
 
-#include <planner_msgs/SetService.h>
-#include <planner_msgs/SetVector3.h>
+#include <Eigen/Dense>
+#include <GeographicLib/Geoid.hpp>
+#include <boost/circular_buffer.hpp>
+#include <chrono>
+#include <functional>
+#include <grid_map_ros/GridMapRosConverter.hpp>
+#include <memory>
+#include <string>
+
 #include "snowsampler_msgs/SetAngle.h"
 #include "snowsampler_msgs/TakeMeasurement.h"
 #include "snowsampler_msgs/Trigger.h"
-
-#include <grid_map_ros/GridMapRosConverter.hpp>
-#include <grid_map_geo/grid_map_geo.h>
 
 // #include "px4_msgs/msg/distance_sensor.hpp"
 // #include "px4_msgs/msg/vehicle_attitude.hpp"
 // #include "px4_msgs/msg/vehicle_command.hpp"
 // #include "px4_msgs/msg/vehicle_global_position.hpp"
-
 
 enum SSPState {
   Error,
@@ -142,11 +139,9 @@ class AdaptiveSnowSampler {
   bool takeMeasurementCallback(snowsampler_msgs::Trigger::Request &request,
                                snowsampler_msgs::Trigger::Response &response);
 
-  void publishTargetNormal(const ros::Publisher &pub,
-                           const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
+  void publishTargetNormal(const ros::Publisher &pub, const Eigen::Vector3d &position, const Eigen::Vector3d &normal);
 
-  void publishSetpointPosition(const ros::Publisher &pub,
-                               const Eigen::Vector3d &position,
+  void publishSetpointPosition(const ros::Publisher &pub, const Eigen::Vector3d &position,
                                const Eigen::Vector3d color = Eigen::Vector3d(1.0, 1.0, 0.0));
 
   void publishPositionHistory(const ros::Publisher &pub, const Eigen::Vector3d &position,
@@ -169,9 +164,8 @@ class AdaptiveSnowSampler {
    * @param marker_namespace
    * @return visualization_msgs::Marker
    */
-  visualization_msgs::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal,
-                                                   int id, Eigen::Vector3d color,
-                                                   const std::string marker_namespace = "arrow");
+  visualization_msgs::Marker vector2ArrowsMsg(const Eigen::Vector3d &position, const Eigen::Vector3d &normal, int id,
+                                              Eigen::Vector3d color, const std::string marker_namespace = "arrow");
   /**
    * @brief Convert 3D vector into arrow marker
    *
@@ -183,17 +177,15 @@ class AdaptiveSnowSampler {
    * @return visualization_msgs::Marker
    */
   visualization_msgs::Marker position2SphereMsg(const Eigen::Vector3d &position, int id, Eigen::Vector3d color,
-                                                     const std::string marker_namespace = "sphere");
-  geometry_msgs::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position,
-                                                          const Eigen::Vector4d orientation);
-
+                                                const std::string marker_namespace = "sphere");
+  geometry_msgs::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position, const Eigen::Vector4d orientation);
 
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
   ros::Timer statusloop_timer_;
-  ros::Timer  cmdloop_timer_;
-  ros::Timer  measurement_tilt_timer_;
+  ros::Timer cmdloop_timer_;
+  ros::Timer measurement_tilt_timer_;
 
   ros::CallbackQueue cmdloop_queue_;
   ros::CallbackQueue statusloop_queue_;

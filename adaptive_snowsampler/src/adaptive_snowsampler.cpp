@@ -39,21 +39,22 @@
  */
 
 #include "adaptive_snowsampler/adaptive_snowsampler.h"
-#include "adaptive_snowsampler/visualization.h"
+
+#include <mavros_msgs/CommandCode.h>
+#include <mavros_msgs/CommandInt.h>
+#include <mavros_msgs/CommandLong.h>
+#include <mavros_msgs/Waypoint.h>
+#include <visualization_msgs/MarkerArray.h>
+
+#include <thread>
 
 #include "adaptive_snowsampler/geo_conversions.h"
+#include "adaptive_snowsampler/visualization.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_ros/static_transform_broadcaster.h"
 
-#include <mavros_msgs/CommandCode.h>
-#include <mavros_msgs/CommandLong.h>
-#include <mavros_msgs/CommandInt.h>
-#include <mavros_msgs/Waypoint.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <thread>
-
-AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private) :
-  nh_(nh), nh_private_(nh_private) {
+AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::NodeHandle &nh_private)
+    : nh_(nh), nh_private_(nh_private) {
   egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
 
   // Publishers
@@ -68,39 +69,35 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   vehicle_pose_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("vehicle_pose_marker", 1);
 
   // Subscribers
-  vehicle_global_position_sub_ = nh_.subscribe("mavros/global_position/global", 1, &AdaptiveSnowSampler::vehicleGlobalPositionCallback, this,
-                                     ros::TransportHints().tcpNoDelay());
-  vehicle_attitude_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &AdaptiveSnowSampler::vehicleAttitudeCallback, this,
-                                    ros::TransportHints().tcpNoDelay());
+  vehicle_global_position_sub_ =
+      nh_.subscribe("mavros/global_position/global", 1, &AdaptiveSnowSampler::vehicleGlobalPositionCallback, this,
+                    ros::TransportHints().tcpNoDelay());
+  vehicle_attitude_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &AdaptiveSnowSampler::vehicleAttitudeCallback,
+                                        this, ros::TransportHints().tcpNoDelay());
   // distance_sensor_sub_ = this->create_subscription<px4_msgs::DistanceSensor>(
   //     "/fmu/out/distance_sensor", qos_profile,
   //     std::bind(&AdaptiveSnowSampler::distanceSensorCallback, this, std::placeholders::_1));
   mavcmd_long_service_client_ = nh_.serviceClient<mavros_msgs::CommandLong>("mavros/cmd/command");
   mavcmd_int_service_client_ = nh_.serviceClient<mavros_msgs::CommandInt>("mavros/cmd/command_int");
 
-  ssp_status_sub_ = nh_.subscribe(
-      "/SSP/state", 10, &AdaptiveSnowSampler::sspStateCallback, this, ros::TransportHints().tcpNoDelay());
+  ssp_status_sub_ =
+      nh_.subscribe("/SSP/state", 10, &AdaptiveSnowSampler::sspStateCallback, this, ros::TransportHints().tcpNoDelay());
 
   /// Service servers
-  setgoal_serviceserver_ = nh_.advertiseService(
-      "/set_goal", &AdaptiveSnowSampler::goalPositionCallback, this);
-  setstart_serviceserver_ = nh_.advertiseService(
-      "/set_start", &AdaptiveSnowSampler::startPositionCallback, this);
+  setgoal_serviceserver_ = nh_.advertiseService("/set_goal", &AdaptiveSnowSampler::goalPositionCallback, this);
+  setstart_serviceserver_ = nh_.advertiseService("/set_start", &AdaptiveSnowSampler::startPositionCallback, this);
 
-  takeoff_serviceserver_ = nh_.advertiseService(
-      "/adaptive_sampler/takeoff", &AdaptiveSnowSampler::takeoffCallback, this);
+  takeoff_serviceserver_ =
+      nh_.advertiseService("/adaptive_sampler/takeoff", &AdaptiveSnowSampler::takeoffCallback, this);
 
-  land_serviceserver_ = nh_.advertiseService(
-      "/adaptive_sampler/land", &AdaptiveSnowSampler::landCallback, this);
+  land_serviceserver_ = nh_.advertiseService("/adaptive_sampler/land", &AdaptiveSnowSampler::landCallback, this);
 
-  goto_serviceserver_ = nh_.advertiseService(
-      "/adaptive_sampler/goto", &AdaptiveSnowSampler::gotoCallback, this);
+  goto_serviceserver_ = nh_.advertiseService("/adaptive_sampler/goto", &AdaptiveSnowSampler::gotoCallback, this);
 
-  return_serviceserver_ = nh_.advertiseService(
-      "/adaptive_sampler/return", &AdaptiveSnowSampler::returnCallback, this);
+  return_serviceserver_ = nh_.advertiseService("/adaptive_sampler/return", &AdaptiveSnowSampler::returnCallback, this);
 
-  measurement_serviceserver_ = nh_.advertiseService(
-      "/adaptive_sampler/take_measurement", &AdaptiveSnowSampler::takeMeasurementCallback, this);
+  measurement_serviceserver_ =
+      nh_.advertiseService("/adaptive_sampler/take_measurement", &AdaptiveSnowSampler::takeMeasurementCallback, this);
 
   // Setup loop timers
   ros::TimerOptions cmdlooptimer_options(ros::Duration(0.1),
@@ -123,7 +120,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
 
   measurementloop_spinner_.reset(new ros::AsyncSpinner(1, &measurementloop_queue_));
   measurementloop_spinner_->start();
-  
+
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>();
   nh_private.param<std::string>("tif_path", file_path_, ".");
   nh_private.param<std::string>("tif_color_path", color_path_, ".");
@@ -157,9 +154,9 @@ void AdaptiveSnowSampler::statusloopCallback(const ros::TimerEvent &event) {
 }
 
 visualization_msgs::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Vector3d &position,
-                                                                      const Eigen::Vector3d &normal, int id,
-                                                                      Eigen::Vector3d color,
-                                                                      const std::string marker_namespace) {
+                                                                 const Eigen::Vector3d &normal, int id,
+                                                                 Eigen::Vector3d color,
+                                                                 const std::string marker_namespace) {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
   marker.header.stamp = ros::Time::now();
@@ -191,8 +188,8 @@ visualization_msgs::Marker AdaptiveSnowSampler::vector2ArrowsMsg(const Eigen::Ve
 }
 
 visualization_msgs::Marker AdaptiveSnowSampler::position2SphereMsg(const Eigen::Vector3d &position, int id,
-                                                                        Eigen::Vector3d color,
-                                                                        const std::string marker_namespace) {
+                                                                   Eigen::Vector3d color,
+                                                                   const std::string marker_namespace) {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
   marker.header.stamp = ros::Time::now();
@@ -218,7 +215,7 @@ visualization_msgs::Marker AdaptiveSnowSampler::position2SphereMsg(const Eigen::
 }
 
 geometry_msgs::PoseStamped AdaptiveSnowSampler::vector3d2PoseStampedMsg(const Eigen::Vector3d position,
-                                                                             const Eigen::Vector4d orientation) {
+                                                                        const Eigen::Vector4d orientation) {
   geometry_msgs::PoseStamped encode_msg;
 
   encode_msg.header.stamp = ros::Time::now();
@@ -233,14 +230,14 @@ geometry_msgs::PoseStamped AdaptiveSnowSampler::vector3d2PoseStampedMsg(const Ei
   return encode_msg;
 };
 
-void AdaptiveSnowSampler::publishTargetNormal(const ros::Publisher &pub,
-                                              const Eigen::Vector3d &position, const Eigen::Vector3d &normal) {
+void AdaptiveSnowSampler::publishTargetNormal(const ros::Publisher &pub, const Eigen::Vector3d &position,
+                                              const Eigen::Vector3d &normal) {
   visualization_msgs::Marker marker = vector2ArrowsMsg(position, normal, 0, Eigen::Vector3d(1.0, 0.0, 1.0));
   pub.publish(marker);
 }
 
-void AdaptiveSnowSampler::publishSetpointPosition(const ros::Publisher &pub,
-                                                  const Eigen::Vector3d &position, const Eigen::Vector3d color) {
+void AdaptiveSnowSampler::publishSetpointPosition(const ros::Publisher &pub, const Eigen::Vector3d &position,
+                                                  const Eigen::Vector3d color) {
   visualization_msgs::Marker marker = position2SphereMsg(position, 1, color);
   pub.publish(marker);
 }
@@ -355,7 +352,7 @@ bool AdaptiveSnowSampler::takeMeasurementCallback(snowsampler_msgs::Trigger::Req
       if (!ros::service::call(service_name, req)) {
         std::cout << "Couldn't call service: " << service_name << std::endl;
       }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
       std::cout << "Service Exception: " << e.what() << std::endl;
       std::cout << "  - measurement ID : " << id << " failed" << std::endl;
     }
@@ -398,7 +395,8 @@ void AdaptiveSnowSampler::tiltCheckCallback(const ros::TimerEvent &event) {
     if ((vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() >= tilt_treshold_) {
       // stop measurement
       std::cout << "drone is tilting, stopping measurement" << std::endl;
-      std::cout << "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff() << std::endl;
+      std::cout << "tilt: " << (vehicle_attitude_filtered_ref_ - vehicle_attitude_filtered).cwiseAbs().maxCoeff()
+                << std::endl;
 
       std::string service_name = "SSP/stop_measurement";
       std::thread t([service_name] {
@@ -408,7 +406,7 @@ void AdaptiveSnowSampler::tiltCheckCallback(const ros::TimerEvent &event) {
           if (!ros::service::call(service_name, req)) {
             std::cout << "Couldn't call service: " << service_name << std::endl;
           }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
           std::cout << "Service Exception: " << e.what() << std::endl;
         }
       });
@@ -549,7 +547,7 @@ bool AdaptiveSnowSampler::gotoCallback(planner_msgs::SetService::Request &reques
 bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &request,
                                          planner_msgs::SetService::Response &response) {
   mavros_msgs::CommandLong msg;
-  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION; 
+  msg.request.command = mavros_msgs::CommandCode::DO_REPOSITION;
   callSetAngleService(home_slope_ * 180.0 / M_PI);  // Adjust the legs for the Home slope
   // Transform target position to wgs84 and amsl
   Eigen::Vector3d home_position_lv03 = home_position_ + map_origin_;
@@ -579,8 +577,7 @@ bool AdaptiveSnowSampler::returnCallback(planner_msgs::SetService::Request &requ
   return true;
 }
 
-void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub,
-                                                 const Eigen::Vector3d &position,
+void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub, const Eigen::Vector3d &position,
                                                  std::vector<geometry_msgs::PoseStamped> &history_vector) {
   unsigned int posehistory_window_ = 2000;
   Eigen::Vector4d vehicle_attitude(1.0, 0.0, 0.0, 0.0);
@@ -608,7 +605,7 @@ void AdaptiveSnowSampler::callSetAngleService(double angle) {
       if (!ros::service::call(service_name, req)) {
         std::cout << "Couldn't call service: " << service_name << std::endl;
       }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
       std::cout << "Service Exception: " << e.what() << std::endl;
     }
   });
@@ -621,8 +618,8 @@ void AdaptiveSnowSampler::writeLog() {
                 << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
                 << ", with snowdepth: " << snow_depth_ << std::endl;
     std::cout << "Measurement " << sspLogId_ << " at vehicle position: " << lv03_vehicle_position_.x() << ", "
-                << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z()
-                                                    << ", with snowdepth: " << snow_depth_<< std::endl;
+              << lv03_vehicle_position_.y() << ", " << lv03_vehicle_position_.z() << ", with snowdepth: " << snow_depth_
+              << std::endl;
     sspLogId_++;
   } else {
     std::cout << "Could not open logfile" << std::endl;

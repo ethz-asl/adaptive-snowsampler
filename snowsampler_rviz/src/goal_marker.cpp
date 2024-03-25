@@ -1,11 +1,11 @@
 #include "snowsampler_rviz/goal_marker.h"
 
-#include <functional>
-#include <thread>
 #include <planner_msgs/SetVector3.h>
 
-GoalMarker::GoalMarker(const ros::NodeHandle &nh) : nh_(nh), marker_server_("goal") {
+#include <functional>
+#include <thread>
 
+GoalMarker::GoalMarker(const ros::NodeHandle &nh) : nh_(nh), marker_server_("goal") {
   set_goal_marker_.header.frame_id = "map";
   set_goal_marker_.name = "set_pose";
   set_goal_marker_.scale = 20.0;
@@ -22,7 +22,8 @@ GoalMarker::GoalMarker(const ros::NodeHandle &nh) : nh_(nh), marker_server_("goa
   initializeMenu();
   menu_handler_.apply(marker_server_, "set_pose");
   marker_server_.applyChanges();
-  grid_map_sub_ = nh_.subscribe("/elevation_map", 1, &GoalMarker::GridmapCallback, this, ros::TransportHints().tcpNoDelay());
+  grid_map_sub_ =
+      nh_.subscribe("/elevation_map", 1, &GoalMarker::GridmapCallback, this, ros::TransportHints().tcpNoDelay());
 }
 
 GoalMarker::~GoalMarker() = default;
@@ -48,8 +49,7 @@ void GoalMarker::setGoalPosition(const Eigen::Vector2d &position) {
   marker_server_.applyChanges();
 }
 
-void GoalMarker::processSetPoseFeedback(
-    const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
+void GoalMarker::processSetPoseFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
   const std::lock_guard<std::mutex> lock(goal_mutex_);
   if (feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE) {
     set_goal_marker_.pose = feedback->pose;
@@ -115,9 +115,8 @@ visualization_msgs::InteractiveMarkerControl GoalMarker::makeMenuControl() {
 }
 
 void GoalMarker::initializeMenu() {
-
-  menu_handler_first_entry_ =
-      menu_handler_.insert("Set Vehicle Position as Home", std::bind(&GoalMarker::setStartCallback, this, std::placeholders::_1));
+  menu_handler_first_entry_ = menu_handler_.insert(
+      "Set Vehicle Position as Home", std::bind(&GoalMarker::setStartCallback, this, std::placeholders::_1));
 
   menu_handler_.insert("Set as Goal", std::bind(&GoalMarker::setGoalCallback, this, std::placeholders::_1));
 }
@@ -146,7 +145,7 @@ void GoalMarker::callPlannerService(const std::string service_name, const Eigen:
       if (!ros::service::call(service_name, req)) {
         std::cout << "Couldn't call service: " << service_name << std::endl;
       }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
       std::cout << "Service Exception: " << e.what() << std::endl;
     }
   });

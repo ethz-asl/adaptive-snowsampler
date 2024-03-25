@@ -34,11 +34,11 @@
 #ifndef ADAPTIVE_SNOWSAMPLER_VISUALIZATION_H
 #define ADAPTIVE_SNOWSAMPLER_VISUALIZATION_H
 
-#include <Eigen/Dense>
-
-#include <ros/ros.h>
 #include <geometry_msgs/Pose.h>
+#include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
+
+#include <Eigen/Dense>
 
 inline geometry_msgs::Pose vector3d2PoseMsg(const Eigen::Vector3d position, const Eigen::Quaterniond orientation) {
   geometry_msgs::Pose encode_msg;
@@ -56,7 +56,7 @@ inline geometry_msgs::Pose vector3d2PoseMsg(const Eigen::Vector3d position, cons
 inline void publishVehiclePose(const ros::Publisher pub, const Eigen::Vector3d& position,
                                const Eigen::Quaterniond& attitude) {
   Eigen::Quaterniond mesh_attitude =
-      attitude* Eigen::Quaterniond(std::cos(1.5 * M_PI / 2), 0.0, 0.0, std::sin(1.5 * M_PI / 2));
+      attitude * Eigen::Quaterniond(std::cos(1.5 * M_PI / 2), 0.0, 0.0, std::sin(1.5 * M_PI / 2));
   geometry_msgs::Pose vehicle_pose = vector3d2PoseMsg(position, mesh_attitude);
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
