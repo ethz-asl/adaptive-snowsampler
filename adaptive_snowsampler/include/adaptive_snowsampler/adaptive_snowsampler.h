@@ -258,7 +258,7 @@ class AdaptiveSnowSampler {
   double relative_altitude_ = 20.0;
   std::shared_ptr<GridMapGeo> map_;
   std::shared_ptr<GeographicLib::Geoid> egm96_5;
-
+  bool global_position_received_{false};
   double snow_depth_;
   double lidar_distance_;
   SSPState sspState_ = SSPState::Ready_To_Measure;

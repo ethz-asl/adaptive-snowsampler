@@ -137,7 +137,9 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
 }
 
 void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {
-  publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+  if (global_position_received_) {
+    publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+  }
   publishVehiclePose(vehicle_pose_pub_, vehicle_position_, vehicle_attitude_);
 }
 
@@ -290,6 +292,7 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const geometry_msgs::PoseStamp
 }
 
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSatFix &msg) {
+  if (!global_position_received_) global_position_received_=true;
   const double vehicle_latitude = msg.latitude;
   const double vehicle_longitude = msg.longitude;
   const double vehicle_altitude = msg.altitude;  // Elliposoidal altitude
