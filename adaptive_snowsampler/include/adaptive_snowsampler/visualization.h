@@ -92,4 +92,27 @@ inline void publishVehiclePose(const ros::Publisher pub, const Eigen::Vector3d& 
   pub.publish(marker_array);
 }
 
+inline void publishDistanceMeasurements(const ros::Publisher pub, const std::vector<Eigen::Vector3d>& points) {
+  visualization_msgs::Marker marker;
+    marker.header.stamp = ros::Time::now();
+    marker.header.frame_id = "map";
+    marker.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker.ns = "distance_sensor";
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+    marker.scale.z = 0.5;
+    marker.color.a = 1.0;  // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+  for (const auto &point : points) {
+    geometry_msgs::Point point_msg;
+    point_msg.x = point.x();
+    point_msg.y = point.y();
+    point_msg.z = point.z();
+    marker.points.push_back(point_msg);
+  }
+  pub.publish(marker);
+}
+
 #endif

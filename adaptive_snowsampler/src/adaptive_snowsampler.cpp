@@ -69,6 +69,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   referencehistory_pub_ = nh_.advertise<nav_msgs::Path>("reference/path", 1);
   snow_depth_pub_ = nh_.advertise<std_msgs::Float64>("/snow_depth", 1);
   vehicle_pose_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("vehicle_pose_marker", 1);
+  distance_measurement_pub_ = nh_.advertise<visualization_msgs::Marker>("distance_measurements", 1);
 
   // Subscribers
   vehicle_global_position_sub_ =
@@ -76,9 +77,8 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
                     ros::TransportHints().tcpNoDelay());
   vehicle_attitude_sub_ = nh_.subscribe("mavros/local_position/pose", 1, &AdaptiveSnowSampler::vehicleAttitudeCallback,
                                         this, ros::TransportHints().tcpNoDelay());
-  // distance_sensor_sub_ = this->create_subscription<px4_msgs::DistanceSensor>(
-  //     "/fmu/out/distance_sensor", qos_profile,
-  //     std::bind(&AdaptiveSnowSampler::distanceSensorCallback, this, std::placeholders::_1));
+  distance_sensor_sub_ = nh_.subscribe("mavros/distance_sensor", 1, &AdaptiveSnowSampler::distanceSensorCallback, this,
+                                    ros::TransportHints().tcpNoDelay());
   mavcmd_long_service_client_ = nh_.serviceClient<mavros_msgs::CommandLong>("mavros/cmd/command");
   mavcmd_int_service_client_ = nh_.serviceClient<mavros_msgs::CommandInt>("mavros/cmd/command_int");
 
@@ -143,6 +143,7 @@ void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {
     publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
   }
   publishVehiclePose(vehicle_pose_pub_, vehicle_position_, vehicle_attitude_);
+  publishDistanceMeasurements(distance_measurement_pub_, measured_points_);
 }
 
 void AdaptiveSnowSampler::statusloopCallback(const ros::TimerEvent &event) {
@@ -341,9 +342,23 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSa
   // Send the transformation
   // tf_broadcaster_->sendTransform(t);
 }
-// void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::DistanceSensor &msg) {
-//   lidar_distance_ = msg.current_distance;
-// }
+
+void AdaptiveSnowSampler::distanceSensorCallback(const sensor_msgs::Range &msg) {
+  lidar_distance_ = msg.range;
+  ///TODO: Project lidar measurement to the ground
+  Eigen::Vector3d distance_vector(0.0, 0.0, -msg.range);
+  const auto R = vehicle_attitude_.toRotationMatrix();
+  Eigen::Vector3d projected_distance_vector = R.transpose() * distance_vector + vehicle_position_;
+  std::cout << "lidar distance: " << lidar_distance_ << std::endl;
+  std::cout << "  - projected_distance_vector: " << projected_distance_vector.transpose() << std::endl;
+  std::cout << "  - vehicle_position_: " << vehicle_position_.transpose() << std::endl;
+  if (map_initialized_ && map_->getGridMap().isInside(vehicle_position_.head(2))) {    
+    double dem_elevation = map_->getGridMap().atPosition("elevation", vehicle_position_.head(2));
+    std::cout << "  - Snow depth: " << projected_distance_vector.z() - dem_elevation << std::endl;
+  }
+
+  measured_points_.push_back(projected_distance_vector);
+}
 
 bool AdaptiveSnowSampler::takeMeasurementCallback(snowsampler_msgs::Trigger::Request &request,
                                                   snowsampler_msgs::Trigger::Response &response) {

@@ -11,12 +11,20 @@ import rospy # pylint: disable=import-error
 import rosbag # pylint: disable=import-error
 # from px4_msgs import msg as px4_msgs # pylint: disable=import-error
 from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import Range
 from geometry_msgs.msg import PoseStamped
 import os
+import numpy as np
+import math
 
 from pyulog import core
 
 #pylint: disable=too-many-locals, invalid-name
+
+def quatMultiplication(q, p):
+  quat = np.array([p[0] * q[0] - p[1] * q[1] - p[2] * q[2] - p[3] * q[3], p[0] * q[1] + p[1] * q[0] - p[2] * q[3] + p[3] * q[2],
+      p[0] * q[2] + p[1] * q[3] + p[2] * q[0] - p[3] * q[1], p[0] * q[3] - p[1] * q[2] + p[2] * q[1] + p[3] * q[0]])
+  return quat
 
 def main():
     """Command line interface"""
@@ -43,7 +51,7 @@ def parseData(d, topic, idx):
 
 
 def appendBag(path, bag):
-        msg_filter={'vehicle_global_position', 'vehicle_attitude'}
+        msg_filter={'vehicle_global_position', 'vehicle_attitude', 'distance_sensor'}
         disable_str_exceptions=False
         ulog = core.ULog(path, msg_filter, disable_str_exceptions)
         data = ulog.data_list
@@ -65,11 +73,18 @@ def appendBag(path, bag):
                 elif d.name == "vehicle_attitude":
                     topic = "mavros/local_position/pose"
                     msg = PoseStamped()
-                    # msg.pose.orientation.w
-                    msg.pose.orientation.w = parseData(d, 'q[0]', i)
-                    msg.pose.orientation.x = parseData(d, 'q[1]', i)
-                    msg.pose.orientation.y = parseData(d, 'q[2]', i)
-                    msg.pose.orientation.z = parseData(d, 'q[3]', i)
+                    vehicle_attitude = np.array([parseData(d, 'q[0]', i), parseData(d, 'q[1]', i), -parseData(d, 'q[2]', i), -parseData(d, 'q[3]', i)])
+                    attitude_offset = np.array([np.cos(0.5 * 0.5 * math.pi), 0.0, 0.0, np.sin(0.5 * 0.5 * math.pi)])
+                    vehicle_aligned_attitude = quatMultiplication(attitude_offset, vehicle_attitude)
+                    msg.pose.orientation.w = vehicle_aligned_attitude[0]
+                    msg.pose.orientation.x = vehicle_aligned_attitude[1]
+                    msg.pose.orientation.y = vehicle_aligned_attitude[2]
+                    msg.pose.orientation.z = vehicle_aligned_attitude[3]
+                                    
+                elif d.name == "distance_sensor":
+                    topic = "mavros/distance_sensor"
+                    msg = Range()
+                    msg.range = parseData(d, 'current_distance', i)
 
                 # for f in d.field_data:
                 #     result = array_pattern.match(f.field_name)

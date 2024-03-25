@@ -66,6 +66,7 @@
 #include "snowsampler_msgs/TakeMeasurement.h"
 #include "snowsampler_msgs/Trigger.h"
 
+#include <sensor_msgs/Range.h>
 // #include "px4_msgs/msg/distance_sensor.hpp"
 // #include "px4_msgs/msg/vehicle_attitude.hpp"
 // #include "px4_msgs/msg/vehicle_command.hpp"
@@ -120,7 +121,7 @@ class AdaptiveSnowSampler {
 
   void vehicleGlobalPositionCallback(const sensor_msgs::NavSatFix &msg);
 
-  // void distanceSensorCallback(const px4_msgs::DistanceSensor &msg);
+  void distanceSensorCallback(const sensor_msgs::Range &msg);
 
   bool startPositionCallback(planner_msgs::SetVector3::Request &request, planner_msgs::SetVector3::Response &response);
 
@@ -204,6 +205,7 @@ class AdaptiveSnowSampler {
   ros::Publisher snow_depth_pub_;
   ros::Publisher vehicle_pose_pub_;
   ros::Publisher map_info_pub_;
+  ros::Publisher distance_measurement_pub_;
 
   ros::Subscriber vehicle_attitude_sub_;
   ros::Subscriber vehicle_global_position_sub_;
@@ -245,6 +247,8 @@ class AdaptiveSnowSampler {
   Eigen::Vector3d start_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d home_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d home_normal_{Eigen::Vector3d(0.0, 0.0, 0.0)};
+
+  std::vector<Eigen::Vector3d> measured_points_;
 
   // tilt prevention parameters
   double tilt_treshold_{0.035};  // ~2deg
