@@ -69,9 +69,9 @@ inline void publishVehiclePose(const ros::Publisher pub, const Eigen::Vector3d& 
   marker.scale.y = 0.005;
   marker.scale.z = 0.005;
   marker.color.a = 1.0;  // Don't forget to set the alpha!
-  marker.color.r = 0.5;
-  marker.color.g = 0.5;
-  marker.color.b = 0.5;
+  marker.color.r = 0.0;
+  marker.color.g = 1.0;
+  marker.color.b = 0.0;
   marker.pose = vehicle_pose;
   marker_array.markers.push_back(marker);
   visualization_msgs::Marker leg_marker;
@@ -84,9 +84,9 @@ inline void publishVehiclePose(const ros::Publisher pub, const Eigen::Vector3d& 
   leg_marker.scale.y = 0.005;
   leg_marker.scale.z = 0.005;
   leg_marker.color.a = 1.0;  // Don't forget to set the alpha!
-  leg_marker.color.r = 0.5;
-  leg_marker.color.g = 0.5;
-  leg_marker.color.b = 0.5;
+  leg_marker.color.r = 1.0;
+  leg_marker.color.g = 1.0;
+  leg_marker.color.b = 0.0;
   leg_marker.pose = vehicle_pose;
   marker_array.markers.push_back(leg_marker);
   pub.publish(marker_array);
