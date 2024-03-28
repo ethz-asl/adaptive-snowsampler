@@ -124,6 +124,7 @@ class SSPBridge:
                 if data:  # If data is not empty
                     # print(f"Received: {data}")
                     self.process_serial(data)
+            time.sleep(0.1)
 
     def process_serial(self, out_str):
 
