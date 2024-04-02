@@ -1,0 +1,12 @@
+[Unit]
+Description=Launch auterion system monitor node as a service
+After=network.target systemd-udevd.service
+
+[Service]
+EnvironmentFile=/home/user/catkin_ws/src/adaptive-snowsampler/systemd/environment.conf
+ExecStart=/bin/bash /home/user/catkin_ws/src/adaptive-snowsampler/systemd/run_system_monitor.sh
+User=user
+Group=user
+
+[Install]
+WantedBy=multi-user.target
