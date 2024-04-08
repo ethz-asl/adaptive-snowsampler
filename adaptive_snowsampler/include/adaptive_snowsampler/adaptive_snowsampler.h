@@ -203,6 +203,7 @@ class AdaptiveSnowSampler {
   ros::Publisher referencehistory_pub_;
   ros::Publisher snow_depth_pub_;
   ros::Publisher vehicle_pose_pub_;
+  ros::Publisher map_info_pub_;
 
   ros::Subscriber vehicle_attitude_sub_;
   ros::Subscriber vehicle_global_position_sub_;

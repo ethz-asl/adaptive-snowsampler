@@ -22,6 +22,7 @@
 #include <planner_msgs/SetString.h>
 #include <planner_msgs/SetVector3.h>
 #include <rviz/visualization_manager.h>
+#include <grid_map_geo_msgs/GeographicMapInfo.h>
 #include <std_msgs/Float64.h>
 #include <std_srvs/Empty.h>
 
@@ -35,12 +36,13 @@
 
 namespace snowsampler_rviz {
 
-PlanningPanel::PlanningPanel(QWidget* parent) : rviz::Panel(parent), nh_(ros::NodeHandle()), tf_listener_(tf_buffer_) {
-  createLayout();
-}
+PlanningPanel::PlanningPanel(QWidget* parent) : rviz::Panel(parent) { createLayout(); }
 
 void PlanningPanel::onInitialize() {
   goal_marker_ = std::make_shared<GoalMarker>(nh_);
+
+  map_info_sub_ =
+      nh_.subscribe("/elevation_map_info", 1, &PlanningPanel::mapInfoCallback, this, ros::TransportHints().tcpNoDelay());
 
   leg_angle_sub_ = nh_.subscribe("/snowsampler/landing_leg_angle", 1, &PlanningPanel::legAngleCallback, this,
                                  ros::TransportHints().tcpNoDelay());
@@ -154,10 +156,10 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
     double y_ch1903 = goal_y_input_->text().toDouble(&ok_y);
     // transform CH1903 to map frame
     geometry_msgs::TransformStamped ch1903_to_map_transform;
-    if (ok_x && ok_y && getCH1903ToMapTransform(ch1903_to_map_transform)) {
+    if (ok_x && ok_y) {
       // transforms are already in negative direction so add instead of subtract
-      double x = x_ch1903 - ch1903_to_map_transform.transform.translation.x;
-      double y = y_ch1903 - ch1903_to_map_transform.transform.translation.y;
+      double x = x_ch1903 - map_origin_.x();
+      double y = y_ch1903 - map_origin_.y();
 
       goal_marker_->setGoalPosition(Eigen::Vector2d(x, y));
       std::cout << "Goal position set to: " << x_ch1903 << "," << y_ch1903 << std::endl;
@@ -310,6 +312,13 @@ void PlanningPanel::snowDepthCallback(const std_msgs::Float64& msg) {
   QString depth = QString::number(msg.data, 'f', 2);
   snow_depth_label_->setText("Snow Depth: " + depth + " m");
 }
+
+void PlanningPanel::mapInfoCallback(const grid_map_geo_msgs::GeographicMapInfo& msg) {
+  map_origin_(0) = msg.origin_x;
+  map_origin_(1) = msg.origin_y;
+  map_origin_(2) = msg.origin_altitude;
+}
+
 void PlanningPanel::sspStateCallback(const std_msgs::Int8& msg) {
   ssp_state_label_->setText("SSP State: " + QString::fromStdString(SSPState_string[msg.data]));
 }
@@ -329,16 +338,6 @@ void PlanningPanel::callSetAngleService(double angle) {
     }
   });
   t.detach();
-}
-
-bool PlanningPanel::getCH1903ToMapTransform(geometry_msgs::TransformStamped& transform) {
-  try {
-    transform = tf_buffer_.lookupTransform("CH1903", "map", ros::Time(0));
-    return true;
-  } catch (tf2::TransformException& ex) {
-    std::cout << "Could not get CH1903 to map transform: " << ex.what() << std::endl;
-    return false;
-  }
 }
 
 }  // namespace snowsampler_rviz

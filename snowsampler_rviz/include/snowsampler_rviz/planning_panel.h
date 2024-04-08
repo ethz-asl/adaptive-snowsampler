@@ -73,6 +73,7 @@ class PlanningPanel : public rviz::Panel {
   void targetAngleCallback(const std_msgs::Float64& msg);
   void snowDepthCallback(const std_msgs::Float64& msg);
   void sspStateCallback(const std_msgs::Int8& msg);
+  void mapInfoCallback(const std_msgs::Float64& msg);
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
   void startEditing(const std::string& id);
@@ -95,8 +96,6 @@ class PlanningPanel : public rviz::Panel {
   void callSetPlannerStateService(std::string service_name, const int mode);
   void callSspService(std::string service_name);
 
-  bool getCH1903ToMapTransform(geometry_msgs::TransformStamped& transform);
-
   QGroupBox* createPlannerModeGroup();
   QGroupBox* createLegControlGroup();
   QGroupBox* createSspControlGroup();
@@ -109,6 +108,7 @@ class PlanningPanel : public rviz::Panel {
   ros::Subscriber target_angle_sub_;
   ros::Subscriber ssp_state_sub_;
   ros::Subscriber snow_depth_subscriber_;
+  ros::Subscriber map_info_sub_;
 
   std::shared_ptr<GoalMarker> goal_marker_;
 
@@ -134,6 +134,8 @@ class PlanningPanel : public rviz::Panel {
   std::map<std::string, PoseWidget*> pose_widget_map_;
   std::map<std::string, EditButton*> edit_button_map_;
 
+  Eigen::Vector3d map_origin_;
+
   // QT state:
   QString namespace_;
   QString planner_name_;
@@ -143,10 +145,6 @@ class PlanningPanel : public rviz::Panel {
 
   // Other state:
   std::string currently_editing_;
-
-  // tf2 stuff:
-  tf2_ros::Buffer tf_buffer_;
-  tf2_ros::TransformListener tf_listener_;
 
   SSPState ssp_state_{Error};
   QLabel* ssp_state_label_;
