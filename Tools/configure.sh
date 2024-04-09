@@ -17,11 +17,14 @@ cp -vf $PACKAGE_PATH/systemd/adaptive-snowsampler.service /etc/systemd/system/
 cp -vf $PACKAGE_PATH/systemd/mavlink-router.service /etc/systemd/system/
 cp -vf $PACKAGE_PATH/systemd/rosbag-record.service /etc/systemd/system/
 cp -vf $PACKAGE_PATH/systemd/ssp-bridge.service /etc/systemd/system/
+cp -vf $PACKAGE_PATH/systemd/system-monitor.service /etc/systemd/system/
 
 systemctl enable adaptive-snowsampler.service
 systemctl enable mavlink-router.service
 systemctl enable ssp-bridge.service
+systemctl enable system-monitor.service
 
 sudo systemctl start adaptive-snowsampler.service
 sudo systemctl start mavlink-router.service
 sudo systemctl start ssp-bridge.service
+sudo systemctl start system-monitor.service
