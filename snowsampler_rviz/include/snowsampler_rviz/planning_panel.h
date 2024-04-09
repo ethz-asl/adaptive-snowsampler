@@ -20,6 +20,7 @@
 #include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
 #include "snowsampler_rviz/pose_widget.h"
+#include "grid_map_geo_msgs/GeographicMapInfo.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Int8.h"
 
@@ -73,7 +74,7 @@ class PlanningPanel : public rviz::Panel {
   void targetAngleCallback(const std_msgs::Float64& msg);
   void snowDepthCallback(const std_msgs::Float64& msg);
   void sspStateCallback(const std_msgs::Int8& msg);
-  void mapInfoCallback(const std_msgs::Float64& msg);
+  void mapInfoCallback(const grid_map_geo_msgs::GeographicMapInfo& msg);
   // Next come a couple of public Qt slots.
  public Q_SLOTS:
   void startEditing(const std::string& id);
