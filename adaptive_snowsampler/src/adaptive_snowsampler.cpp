@@ -50,6 +50,7 @@
 
 #include "adaptive_snowsampler/geo_conversions.h"
 #include "adaptive_snowsampler/visualization.h"
+#include "grid_map_geo_msgs/GeographicMapInfo.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_ros/static_transform_broadcaster.h"
 
@@ -59,6 +60,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
 
   // Publishers
   original_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("elevation_map", 1);
+  map_info_pub_ = nh_.advertise<grid_map_geo_msgs::GeographicMapInfo>("elevation_map_info", 1);
   target_normal_pub_ = nh_.advertise<visualization_msgs::Marker>("target_normal", 1);
   setpoint_position_pub_ = nh_.advertise<visualization_msgs::Marker>("setpoint_position", 1);
   home_position_pub_ = nh_.advertise<visualization_msgs::Marker>("home_position", 1);
@@ -263,6 +265,19 @@ void AdaptiveSnowSampler::publishMap() {
   Eigen::Vector3d map_origin;
   map_->getGlobalOrigin(epsg, map_origin);
   map_origin_ = map_origin;
+
+  grid_map_geo_msgs::GeographicMapInfo map_info_msg;
+  map_info_msg.header.stamp = ros::Time::now();
+  map_info_msg.geo_coordinate = static_cast<int>(epsg);
+  map_info_msg.width = map_->getGridMap().getSize()(0);
+  map_info_msg.height = map_->getGridMap().getSize()(1);
+  map_info_msg.x_resolution = map_->getGridMap().getResolution();
+  map_info_msg.y_resolution = map_->getGridMap().getResolution();
+  map_info_msg.origin_x = map_origin(0);
+  map_info_msg.origin_y = map_origin(1);
+  map_info_msg.origin_altitude = map_origin(2);
+
+  map_info_pub_.publish(map_info_msg);
 
   geometry_msgs::TransformStamped static_transformStamped_;
   static_transformStamped_.header.stamp = ros::Time::now();
