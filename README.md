@@ -6,6 +6,9 @@
 
 This project includes an implementation of operating the snow sampler drone.
 
+> This work has been submitted to [ISSW 2024](https://www.issw2024.com/).
+
+![drone_in_snow](https://github.com/ethz-asl/adaptive-snowsampler/assets/5248102/acb43300-03ae-4160-b090-5c5f373461be)
 
 ## Installation
 ```
