@@ -4,7 +4,12 @@
 
 [![ROS1 Build Test](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/actions/workflows/build_test.yml/badge.svg)](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/actions/workflows/build_test.yml)
 
-![rviz](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/assets/5248102/117a296d-01ad-4209-bec7-fb14267628e0)
+This project includes an implementation of operating the snow sampler drone.
+
+> This work has been submitted to [ISSW 2024](https://www.issw2024.com/).
+
+![drone_in_snow](https://github.com/ethz-asl/adaptive-snowsampler/assets/5248102/acb43300-03ae-4160-b090-5c5f373461be)
+
 ## Installation
 ```
 cd ~
@@ -73,3 +78,5 @@ Run rviz with the following command.
 ROS_MASTER_URI=http://172.30.132.111:11311
 roslaunch snowsampler_rviz run.launch
 ```
+
+![rviz](https://github.com/Jaeyoung-Lim/adaptive-snowsampler/assets/5248102/117a296d-01ad-4209-bec7-fb14267628e0)
