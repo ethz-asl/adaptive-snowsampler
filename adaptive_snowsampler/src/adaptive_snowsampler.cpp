@@ -307,7 +307,7 @@ void AdaptiveSnowSampler::vehicleAttitudeCallback(const geometry_msgs::PoseStamp
 }
 
 void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSatFix &msg) {
-  if (!global_position_received_) global_position_received_=true;
+  if (!global_position_received_) global_position_received_ = true;
   const double vehicle_latitude = msg.latitude;
   const double vehicle_longitude = msg.longitude;
   const double vehicle_altitude = msg.altitude;  // Elliposoidal altitude
@@ -500,12 +500,23 @@ bool AdaptiveSnowSampler::startPositionCallback(planner_msgs::SetVector3::Reques
 
 bool AdaptiveSnowSampler::takeoffCallback(planner_msgs::SetService::Request &request,
                                           planner_msgs::SetService::Response &response) {
+  Eigen::Vector3d target_position_lv03 =
+      vehicle_position_ + Eigen::Vector3d(0.0, 0.0, relative_altitude_) + map_origin_;
+  double target_position_latitude;
+  double target_position_longitude;
+  double target_position_altitude;
+  target_position_lv03.z() = target_position_lv03.z() + relative_altitude_;
+  GeoConversions::reverse(target_position_lv03.x(), target_position_lv03.y(), target_position_lv03.z(),
+                          target_position_latitude, target_position_longitude, target_position_altitude);
+  double target_position_amsl =
+      target_position_altitude -
+      GeographicLib::Geoid::GEOIDTOELLIPSOID * (*egm96_5)(target_position_latitude, target_position_longitude);
   mavros_msgs::CommandLong msg;
   msg.request.command = mavros_msgs::CommandCode::NAV_TAKEOFF;
   msg.request.param1 = -1;
   msg.request.param5 = NAN;
   msg.request.param6 = NAN;
-  msg.request.param7 = vehicle_position_.z() + relative_altitude_;
+  msg.request.param7 = target_position_amsl;
   std::cout << "Vehicle commanded altitude: " << vehicle_position_.z() + relative_altitude_ << std::endl;
   mavcmd_long_service_client_.call(msg);
 
