@@ -3,7 +3,7 @@
     <arg name="fcu_url" default="udp://:14540@127.0.0.1:14557"/>
     <arg name="gcs_url" default="" />
     <arg name="visualization" default="false"/>
-    <arg name="location" default="prodkamm_1m_crop"/>
+    <arg name="location" default="braemabuel"/>
     <arg name="gui" default="false"/>
     <arg name="verbose" default="false"/>
 
