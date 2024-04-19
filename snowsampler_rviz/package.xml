@@ -10,6 +10,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
+  <build_depend>grid_map_geo_msgs</build_depend>
   
   <depend>mav_msgs</depend>
   <depend>roscpp</depend>

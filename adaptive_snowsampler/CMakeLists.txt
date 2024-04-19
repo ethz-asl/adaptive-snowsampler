@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   grid_map_geo
   grid_map_ros
+  grid_map_geo_msgs
   eigen_catkin
   interactive_markers
   planner_msgs
