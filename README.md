@@ -48,31 +48,33 @@ ros2 launch adaptive_snowsampler launch.xml
 
 ## Testing with PX4 Software-In-The-Loop(SITL) simulation
 
-Run the simulation instance
+Set the Package Paths
+```
+cd ~/PX4-Autopilot/
+DONT_RUN=1 make px4_sitl_default gazebo-classic
+source ~/catkin_ws/devel/setup.bash    # (optional)
+source Tools/simulation/gazebo-classic/setup_gazebo.bash $(pwd) $(pwd)/build/px4_sitl_default
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/simulation/gazebo-classic/sitl_gazebo-classic
+```
+Set the takeoff location
 ```
 export PX4_HOME_LAT=46.785479
 export PX4_HOME_LON=9.846803
 export PX4_HOME_ALT=2301.23
-make px4_sitl gz_x500
+
 ```
 
-Run the micro-ros-agent
-```
-micro-ros-agent udp4 --port 8888
-```
 Run the node
 ```
-ros2 launch adaptive_snowsampler launch.xml
-```
+roslaunch adaptive_snowsampler sitl_run.launch
 
-## Setting the leg angle manually:
-```
-rosservice call /snowsampler/set_landing_leg_angle  "35.0"
 ```
 
 ## Running the ground station
 
 To control the vehicle from the ground, we need to connect to the ROS Master on the drone.
+Whereby its important that the IP is correct and that the drone and ground station are in the same zerotier network.
 Run rviz with the following command.
 ```
 ROS_MASTER_URI=http://172.30.132.111:11311
