@@ -7,8 +7,8 @@ PlanningPanel::PlanningPanel(QWidget* parent) : rviz::Panel(parent) { createLayo
 void PlanningPanel::onInitialize() {
   goal_marker_ = std::make_shared<GoalMarker>(nh_);
 
-  map_info_sub_ =
-      nh_.subscribe("/elevation_map_info", 1, &PlanningPanel::mapInfoCallback, this, ros::TransportHints().tcpNoDelay());
+  map_info_sub_ = nh_.subscribe("/elevation_map_info", 1, &PlanningPanel::mapInfoCallback, this,
+                                ros::TransportHints().tcpNoDelay());
 
   leg_angle_sub_ = nh_.subscribe("/snowsampler/landing_leg_angle", 1, &PlanningPanel::legAngleCallback, this,
                                  ros::TransportHints().tcpNoDelay());
@@ -140,7 +140,7 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
 // Save all configuration data from this panel to the given
 // Config object.  It is important here that you call save()
 // on the parent class so the class id and panel name get saved.
-void PlanningPanel::save(rviz::Config config) const {rviz::Panel::save(config);}
+void PlanningPanel::save(rviz::Config config) const { rviz::Panel::save(config); }
 
 // Load all configuration data for this panel from the given Config object.
 void PlanningPanel::load(const rviz::Config& config) { rviz::Panel::load(config); }

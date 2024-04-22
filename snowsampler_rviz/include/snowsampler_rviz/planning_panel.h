@@ -1,7 +1,6 @@
 #ifndef snowsampler_rviz_PLANNING_PANEL_H_
 #define snowsampler_rviz_PLANNING_PANEL_H_
 
-
 #include <geometry_msgs/PoseStamped.h>
 #include <grid_map_geo_msgs/GeographicMapInfo.h>
 #include <mav_msgs/conversions.h>
@@ -18,15 +17,15 @@
 #include <std_msgs/Int8.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
-#include <thread>
+
 #include <QCheckBox>
-#include <QGroupBox>
 #include <QGridLayout>
+#include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTimer>
-
+#include <thread>
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
 enum SSPState {
@@ -123,8 +122,6 @@ class PlanningPanel : public rviz::Panel {
   QPushButton* set_start_button_;
   std::vector<QPushButton*> set_planner_state_buttons_;
   QPushButton* controller_button_;
-
-
 
   Eigen::Vector3d map_origin_;
 
