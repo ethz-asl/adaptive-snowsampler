@@ -28,9 +28,7 @@
 
 #include "snowsampler_msgs/SetAngle.h"
 #include "snowsampler_msgs/Trigger.h"
-#include "snowsampler_rviz/edit_button.h"
 #include "snowsampler_rviz/goal_marker.h"
-#include "snowsampler_rviz/pose_widget.h"
 
 // using namespace std::chrono_literals;
 
@@ -171,57 +169,6 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
   return groupBox;
 }
 
-void PlanningPanel::terrainAlignmentStateChanged(int state) {
-  if (state == 0) {
-    align_terrain_on_load_ = 1;
-  } else {
-    align_terrain_on_load_ = 0;
-  }
-}
-
-void PlanningPanel::startEditing(const std::string& id) {
-  // Make sure nothing else is being edited.
-  if (!currently_editing_.empty()) {
-    auto search = edit_button_map_.find(currently_editing_);
-    if (search != edit_button_map_.end()) {
-      search->second->finishEditing();
-    }
-  }
-  currently_editing_ = id;
-  // Get the current pose:
-  auto search = pose_widget_map_.find(currently_editing_);
-  if (search == pose_widget_map_.end()) {
-    return;
-  }
-  mav_msgs::EigenTrajectoryPoint pose;
-  search->second->getPose(&pose);
-}
-
-void PlanningPanel::finishEditing(const std::string& id) {
-  // if (currently_editing_ == id) {
-  //   currently_editing_.clear();
-  // }
-  // auto search = pose_widget_map_.find(id);
-  // if (search == pose_widget_map_.end()) {
-  //   return;
-  // }
-  // rclcpp::spin_some(node_);
-  // mav_msgs::EigenTrajectoryPoint pose;
-  // search->second->getPose(&pose);
-}
-
-void PlanningPanel::registerPoseWidget(PoseWidget* widget) {
-  pose_widget_map_[widget->id()] = widget;
-  connect(widget, SIGNAL(poseUpdated(const std::string&, mav_msgs::EigenTrajectoryPoint&)), this,
-          SLOT(widgetPoseUpdated(const std::string&, mav_msgs::EigenTrajectoryPoint&)));
-}
-
-void PlanningPanel::registerEditButton(EditButton* button) {
-  edit_button_map_[button->id()] = button;
-  connect(button, SIGNAL(startedEditing(const std::string&)), this, SLOT(startEditing(const std::string&)));
-  connect(button, SIGNAL(finishedEditing(const std::string&)), this, SLOT(finishEditing(const std::string&)));
-}
-
 // Save all configuration data from this panel to the given
 // Config object.  It is important here that you call save()
 // on the parent class so the class id and panel name get saved.
@@ -235,8 +182,6 @@ void PlanningPanel::save(rviz::Config config) const {
 
 // Load all configuration data for this panel from the given Config object.
 void PlanningPanel::load(const rviz::Config& config) { rviz::Panel::load(config); }
-
-void PlanningPanel::widgetPoseUpdated(const std::string& id, mav_msgs::EigenTrajectoryPoint& pose) {}
 
 void PlanningPanel::setPlannerModeServiceTakeoff() { callSetPlannerStateService("/adaptive_sampler/takeoff", 2); }
 
