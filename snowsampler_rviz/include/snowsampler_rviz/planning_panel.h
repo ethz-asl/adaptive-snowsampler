@@ -11,6 +11,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QTimer>
+#include <QPushButton>
 
 #include "geometry_msgs/PoseStamped.h"
 #include "mav_msgs/conversions.h"
