@@ -11,15 +11,11 @@ add_definitions(-std=c++11)
 set(CMAKE_AUTOMOC OFF)
 
 set(HEADER_FILES_QT
-  include/snowsampler_rviz/pose_widget.h
   include/snowsampler_rviz/planning_panel.h
-  include/snowsampler_rviz/edit_button.h
 )
 
 set(SRC_FILES
   src/planning_panel.cpp
-  src/pose_widget.cpp
-  src/edit_button.cpp
   src/goal_marker.cpp
 )
 
