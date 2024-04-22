@@ -1,37 +1,5 @@
 #include "snowsampler_rviz/planning_panel.h"
 
-#include <geometry_msgs/Twist.h>
-#include <stdio.h>
-
-#include <QCheckBox>
-#include <QGridLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPainter>
-#include <QTimer>
-#include <QVBoxLayout>
-#include <functional>
-#include <thread>
-// #include <mav_planning_msgs/PlannerService.h>
-// #include <ros/names.h>
-#include <mavros_msgs/SetMode.h>
-#include <planner_msgs/NavigationStatus.h>
-#include <planner_msgs/SetPlannerState.h>
-#include <planner_msgs/SetService.h>
-#include <planner_msgs/SetString.h>
-#include <planner_msgs/SetVector3.h>
-#include <rviz/visualization_manager.h>
-#include <grid_map_geo_msgs/GeographicMapInfo.h>
-#include <std_msgs/Float64.h>
-#include <std_srvs/Empty.h>
-
-#include "snowsampler_msgs/SetAngle.h"
-#include "snowsampler_msgs/Trigger.h"
-#include "snowsampler_rviz/goal_marker.h"
-
-// using namespace std::chrono_literals;
-
 namespace snowsampler_rviz {
 
 PlanningPanel::PlanningPanel(QWidget* parent) : rviz::Panel(parent) { createLayout(); }
@@ -172,13 +140,7 @@ QGroupBox* PlanningPanel::createPlannerModeGroup() {
 // Save all configuration data from this panel to the given
 // Config object.  It is important here that you call save()
 // on the parent class so the class id and panel name get saved.
-void PlanningPanel::save(rviz::Config config) const {
-  rviz::Panel::save(config);
-  config.mapSetValue("namespace", namespace_);
-  config.mapSetValue("planner_name", planner_name_);
-  config.mapSetValue("planning_budget", planning_budget_value_);
-  config.mapSetValue("odometry_topic", odometry_topic_);
-}
+void PlanningPanel::save(rviz::Config config) const {rviz::Panel::save(config);}
 
 // Load all configuration data for this panel from the given Config object.
 void PlanningPanel::load(const rviz::Config& config) { rviz::Panel::load(config); }
@@ -207,11 +169,10 @@ void PlanningPanel::callSetPlannerStateService(std::string service_name, const i
 }
 
 void PlanningPanel::callSspTakeMeasurementService() { callSspService("/adaptive_sampler/take_measurement"); }
-
 void PlanningPanel::callSspStopMeasurementService() { callSspService("/SSP/stop_measurement"); }
 void PlanningPanel::callSspGoHomeService() { callSspService("/SSP/go_home"); }
 
-// TODO: this could be combined with callSetPlannerStateService through templating
+// TODO: this could be combined with callSetPlannerStateService and callSspSetMeasurementDepthService through templating
 void PlanningPanel::callSspService(std::string service_name) {
   std::cout << "Calling SSP service: " << service_name << std::endl;
   std::thread t([service_name] {

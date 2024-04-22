@@ -1,29 +1,32 @@
 #ifndef snowsampler_rviz_PLANNING_PANEL_H_
 #define snowsampler_rviz_PLANNING_PANEL_H_
 
-#ifndef Q_MOC_RUN
+
+#include <geometry_msgs/PoseStamped.h>
+#include <grid_map_geo_msgs/GeographicMapInfo.h>
+#include <mav_msgs/conversions.h>
+#include <mav_msgs/eigen_mav_msgs.h>
 #include <planner_msgs/NavigationStatus.h>
+#include <planner_msgs/SetService.h>
+#include <ros/ros.h>
 #include <rviz/panel.h>
+#include <snowsampler_msgs/SetAngle.h>
+#include <snowsampler_msgs/SetMeasurementDepth.h>
+#include <snowsampler_msgs/Trigger.h>
+#include <snowsampler_rviz/goal_marker.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Int8.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-
+#include <thread>
+#include <QCheckBox>
 #include <QGroupBox>
+#include <QGridLayout>
 #include <QLabel>
-#include <QTimer>
+#include <QLineEdit>
 #include <QPushButton>
+#include <QTimer>
 
-#include "geometry_msgs/PoseStamped.h"
-#include "mav_msgs/conversions.h"
-#include "mav_msgs/eigen_mav_msgs.h"
-#include "snowsampler_msgs/SetMeasurementDepth.h"
-#include "snowsampler_msgs/Trigger.h"
-#include "snowsampler_rviz/goal_marker.h"
-#include "grid_map_geo_msgs/GeographicMapInfo.h"
-#include "std_msgs/Float64.h"
-#include "std_msgs/Int8.h"
-
-#endif
 
 enum PLANNER_STATE { HOLD = 1, NAVIGATE = 2, ROLLOUT = 3, ABORT = 4, RETURN = 5 };
 enum SSPState {
