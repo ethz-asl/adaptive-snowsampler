@@ -69,6 +69,7 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
   referencehistory_pub_ = nh_.advertise<nav_msgs::Path>("reference/path", 1);
   snow_depth_pub_ = nh_.advertise<std_msgs::Float64>("/snow_depth", 1);
   vehicle_pose_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("vehicle_pose_marker", 1);
+  coloredhistory_pub_ = nh_.advertise<visualization_msgs::Marker>("coloredhistory", 1);
 
   // Subscribers
   vehicle_global_position_sub_ =
@@ -339,6 +340,7 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSa
   // tf_broadcaster_->sendTransform(t);
   if (global_position_received_) {
     publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+    publishColoredTrajectory(coloredhistory_pub_, vehicle_position_, colored_trajectory_);
   }
 }
 // void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::DistanceSensor &msg) {
@@ -621,6 +623,69 @@ void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub, cons
   msg.poses = history_vector;
 
   pub.publish(msg);
+}
+
+void AdaptiveSnowSampler::publishColoredTrajectory(const ros::Publisher &pub, const Eigen::Vector3d &vehicle_position,
+                                                   std::vector<Eigen::Vector3d> &position_history) {
+
+    unsigned int posehistory_window_ = 2000;
+    position_history.push_back(vehicle_position);
+    if (position_history.size() > posehistory_window_) {
+      position_history.pop_back();
+    }
+
+
+    const std::vector<std::vector<float>>& ctable = colorMap.at("magma");
+
+    std::vector<Eigen::Vector3d> segment_colors;
+
+    //Identify limits of trajectory
+    double min_altitude{std::numeric_limits<double>::infinity()};
+    double max_altitude{-std::numeric_limits<double>::infinity()};
+    for (auto& position : position_history) {
+      if (position(2) > max_altitude) {
+        max_altitude = position(2);
+      }
+      if (position(2) < min_altitude) {
+        min_altitude = position(2);
+      }
+    }
+
+
+    visualization_msgs::Marker msg;
+    msg.header.frame_id = "map";
+    msg.header.stamp = ros::Time::now();
+    msg.id = 0;
+    msg.type = visualization_msgs::Marker::LINE_STRIP;
+    msg.action = visualization_msgs::Marker::ADD;
+    msg.pose.orientation.x = 0.0;
+    msg.pose.orientation.y = 0.0;
+    msg.pose.orientation.z = 0.0;
+    msg.pose.orientation.w = 1.0;
+    msg.scale.x = 2.0;
+    msg.scale.y = 2.0;
+    msg.scale.z = 2.0;
+    for (auto& position : position_history) {
+      double intensity = (position(2) - min_altitude) / (max_altitude - min_altitude);
+      // // std::cout << "intensity: " << intensity << " segment_id: " << segment_id << std::endl;
+      intensity = std::max(std::min(intensity, 1.0), 0.0);
+      int idx = std::min(std::max(int(floor(intensity * 255.0)), 0), 255);
+      // Get color from table
+      std::vector<float> rgb = ctable.at(idx);
+      std_msgs::ColorRGBA color;
+      color.r = static_cast<double>(rgb[0]);
+      color.g = static_cast<double>(rgb[1]);
+      color.b = static_cast<double>(rgb[2]);
+      color.a = 1.0;
+      // Eigen::Vector3d segment_color();
+      msg.colors.push_back(color);
+      geometry_msgs::Point point;
+      point.x = position(0);
+      point.y = position(1);
+      point.z = position(2);
+      msg.points.push_back(point);
+    }
+    pub.publish(msg);
 }
 
 void AdaptiveSnowSampler::callSetAngleService(double angle) {

@@ -180,6 +180,9 @@ class AdaptiveSnowSampler {
                                                 const std::string marker_namespace = "sphere");
   geometry_msgs::PoseStamped vector3d2PoseStampedMsg(const Eigen::Vector3d position, const Eigen::Vector4d orientation);
 
+  void publishColoredTrajectory(const ros::Publisher &pub, const Eigen::Vector3d &vehicle_position,
+                                                   std::vector<Eigen::Vector3d> &position_history);
+
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
@@ -204,6 +207,7 @@ class AdaptiveSnowSampler {
   ros::Publisher snow_depth_pub_;
   ros::Publisher vehicle_pose_pub_;
   ros::Publisher map_info_pub_;
+  ros::Publisher coloredhistory_pub_;
 
   ros::Subscriber vehicle_attitude_sub_;
   ros::Subscriber vehicle_global_position_sub_;
@@ -227,9 +231,10 @@ class AdaptiveSnowSampler {
 
   Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d lv03_vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
-  Eigen::Vector3d map_origin_{Eigen::Vector3d{787802.0, 185985.0, 0.0}}; //Fluelatal
-  // Eigen::Vector3d map_origin_{Eigen::Vector3d{783936.0, 184512.0, 0.0}}; //Braemabuel
+  // Eigen::Vector3d map_origin_{Eigen::Vector3d{787802.0, 185985.0, 0.0}};  // Fluelatal
+  Eigen::Vector3d map_origin_{Eigen::Vector3d{783936.0, 184512.0, 0.0}}; //Braemabuel
   std::vector<geometry_msgs::PoseStamped> positionhistory_vector_;
+  std::vector<Eigen::Vector3d> colored_trajectory_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
   boost::circular_buffer<Eigen::Vector3d> vehicle_attitude_buffer_{20};
   Eigen::Vector3d vehicle_attitude_filtered_ref_{Eigen::Vector3d(0.0, 0.0, 0.0)};
