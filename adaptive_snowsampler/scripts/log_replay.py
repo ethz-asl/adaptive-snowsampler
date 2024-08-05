@@ -110,6 +110,8 @@ def convert_ulog2rosbag(path, rosbag_file_name, messages, disable_str_exceptions
             list.sort()
 
             for filename in list:
+                if os.path.isdir(os.path.join(path, filename)):
+                    continue
                 print(filename)
                 appendBag(os.path.join(path, filename), bag)
         else:

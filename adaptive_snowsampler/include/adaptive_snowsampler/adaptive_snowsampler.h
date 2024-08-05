@@ -227,7 +227,8 @@ class AdaptiveSnowSampler {
 
   Eigen::Vector3d vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
   Eigen::Vector3d lv03_vehicle_position_{Eigen::Vector3d(0.0, 0.0, 0.0)};
-  Eigen::Vector3d map_origin_{Eigen::Vector3d{0.0, 0.0, 0.0}};
+  Eigen::Vector3d map_origin_{Eigen::Vector3d{787802.0, 185985.0, 0.0}}; //Fluelatal
+  // Eigen::Vector3d map_origin_{Eigen::Vector3d{783936.0, 184512.0, 0.0}}; //Braemabuel
   std::vector<geometry_msgs::PoseStamped> positionhistory_vector_;
   Eigen::Quaterniond vehicle_attitude_{Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0)};
   boost::circular_buffer<Eigen::Vector3d> vehicle_attitude_buffer_{20};

@@ -139,9 +139,6 @@ AdaptiveSnowSampler::AdaptiveSnowSampler(const ros::NodeHandle &nh, const ros::N
 }
 
 void AdaptiveSnowSampler::cmdloopCallback(const ros::TimerEvent &event) {
-  if (global_position_received_) {
-    publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
-  }
   publishVehiclePose(vehicle_pose_pub_, vehicle_position_, vehicle_attitude_);
 }
 
@@ -265,7 +262,7 @@ void AdaptiveSnowSampler::publishMap() {
   Eigen::Vector3d map_origin;
   map_->getGlobalOrigin(epsg, map_origin);
   map_origin_ = map_origin;
-
+  std::cout << "map_origin: " << map_origin_.transpose() << std::endl;
   grid_map_geo_msgs::GeographicMapInfo map_info_msg;
   map_info_msg.header.stamp = ros::Time::now();
   map_info_msg.geo_coordinate = static_cast<int>(epsg);
@@ -340,6 +337,9 @@ void AdaptiveSnowSampler::vehicleGlobalPositionCallback(const sensor_msgs::NavSa
 
   // Send the transformation
   // tf_broadcaster_->sendTransform(t);
+  if (global_position_received_) {
+    publishPositionHistory(referencehistory_pub_, vehicle_position_, positionhistory_vector_);
+  }
 }
 // void AdaptiveSnowSampler::distanceSensorCallback(const px4_msgs::DistanceSensor &msg) {
 //   lidar_distance_ = msg.current_distance;

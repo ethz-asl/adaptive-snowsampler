@@ -34,10 +34,6 @@ Panels:
     SyncSource: ""
   - Class: snowsampler_rviz/PlanningPanel
     Name: PlanningPanel
-    namespace: ""
-    odometry_topic: ""
-    planner_name: ""
-    planning_budget: 100.0
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -69,14 +65,11 @@ Visualization Manager:
       Color: 200; 200; 200
       Color Layer: color
       Color Transformer: ColorLayer
-      ColorMap: default
       Enabled: true
-      Grid Cell Decimation: 1
-      Grid Line Thickness: 0.10000000149011612
       Height Layer: elevation
       Height Transformer: GridMapLayer
       History Length: 1
-      Invert ColorMap: false
+      Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 10
       Min Color: 0; 0; 0
@@ -85,7 +78,7 @@ Visualization Manager:
       Show Grid Lines: false
       Topic: /elevation_map
       Unreliable: false
-      Use ColorMap: true
+      Use Rainbow: true
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -125,7 +118,7 @@ Visualization Manager:
       Marker Topic: /home_position
       Name: Marker
       Namespaces:
-        {}
+        sphere: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -133,7 +126,7 @@ Visualization Manager:
       Marker Topic: /setpoint_position
       Name: Marker
       Namespaces:
-        {}
+        sphere: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -141,7 +134,7 @@ Visualization Manager:
       Marker Topic: /target_normal
       Name: Marker
       Namespaces:
-        {}
+        arrow: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -149,7 +142,8 @@ Visualization Manager:
       Marker Topic: /vehicle_pose_marker
       Name: MarkerArray
       Namespaces:
-        {}
+        body: true
+        leg: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -180,7 +174,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 242.64480590820312
+      Distance: 273.07568359375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -188,17 +182,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 15.703259468078613
-        Y: 103.41791534423828
-        Z: 1887.617431640625
+        X: -73.24365234375
+        Y: 107.97415924072266
+        Z: 2238.623291015625
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5903987884521484
+      Pitch: 0.2403990477323532
       Target Frame: <Fixed Frame>
-      Yaw: 5.393568515777588
+      Yaw: 1.540382981300354
     Saved: ~
 Window Geometry:
   Displays:
@@ -219,4 +213,4 @@ Window Geometry:
     collapsed: false
   Width: 1386
   X: 432
-  Y: 82
+  Y: 45
