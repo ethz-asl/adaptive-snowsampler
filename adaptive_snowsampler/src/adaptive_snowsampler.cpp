@@ -628,7 +628,7 @@ void AdaptiveSnowSampler::publishPositionHistory(const ros::Publisher &pub, cons
 void AdaptiveSnowSampler::publishColoredTrajectory(const ros::Publisher &pub, const Eigen::Vector3d &vehicle_position,
                                                    std::vector<Eigen::Vector3d> &position_history) {
 
-    unsigned int posehistory_window_ = 2000;
+    unsigned int posehistory_window_ = 4000;
     position_history.push_back(vehicle_position);
     if (position_history.size() > posehistory_window_) {
       position_history.pop_back();

@@ -1,6 +1,6 @@
 <launch>
-    <!-- <arg name="location" default="flueelatal"/> -->
-    <arg name="location" default="braemabuel_1m_crop"/>
+    <arg name="location" default="flueelatal"/>
+    <!-- <arg name="location" default="braemabuel_1m_crop"/> -->
     <arg name="path" default="$(find adaptive_snowsampler)/scripts/file.bag"/>
     <arg name="visualization" default="true"/>
     <arg name="start_time" default="0.0"/>
