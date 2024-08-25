@@ -263,7 +263,6 @@ void AdaptiveSnowSampler::publishMap() {
   Eigen::Vector3d map_origin;
   map_->getGlobalOrigin(epsg, map_origin);
   map_origin_ = map_origin;
-  std::cout << "map_origin: " << map_origin_.transpose() << std::endl;
   grid_map_geo_msgs::GeographicMapInfo map_info_msg;
   map_info_msg.header.stamp = ros::Time::now();
   map_info_msg.geo_coordinate = static_cast<int>(epsg);
@@ -651,6 +650,7 @@ void AdaptiveSnowSampler::publishColoredTrajectory(const ros::Publisher &pub, co
       }
     }
 
+    std::cout << "max altitude: " << max_altitude << ", min altitude: " << min_altitude << std::endl;
 
     visualization_msgs::Marker msg;
     msg.header.frame_id = "map";
