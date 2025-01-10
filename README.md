@@ -15,8 +15,8 @@ This project includes an implementation of operating the snow sampler drone.
 cd ~
 mkdir -p catkin_ws/src
 cd catkin_ws/src
-git clone https://github.com/Jaeyoung-Lim/adaptive-snowsampler.git -b ros1
-git clone https://github.com/ethz-asl/grid_map_geo.git
+git clone https://github.com/ethz-asl/adaptive-snowsampler.git -b ros1
+git clone https://github.com/ethz-asl/grid_map_geo.git -b master
 git clone https://github.com/ethz-asl/mav_comm.git
 git clone https://github.com/ethz-asl/terrain-navigation.git
 cd ..
