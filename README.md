@@ -6,9 +6,20 @@
 
 This project includes an implementation of operating the snow sampler drone.
 
-> This work has been submitted to [ISSW 2024](https://www.issw2024.com/).
-
 ![drone_in_snow](https://github.com/ethz-asl/adaptive-snowsampler/assets/5248102/acb43300-03ae-4160-b090-5c5f373461be)
+
+In case of using this work in an academic context, please consdier citing the following paper.
+- Chies, Claudio, Tiziano Di Pietro, Jaeyoung Lim, Florian Achermann, and Roland Siegwart. "SNOWSAMPLER: AN AUTONOMOUS UNCREWED AERIAL VEHICLE FOR PENETRATION-BASED SNOW STRATIGRAPHY MEASUREMENTS ON STEEP SLOPES." International Snow Science Workshop, 2024. [[paper](https://arc.lib.montana.edu/snow-science/objects/ISSW2024_P9.11.pdf)] [[video](https://youtu.be/KPD9LSK-fC4?si=RycI_z_ndkEv1_BS)] 
+
+```
+@inproceedings{chies2024snowsampler,
+  title={SNOWSAMPLER: AN AUTONOMOUS UNCREWED AERIAL VEHICLE FOR PENETRATION-BASED SNOW STRATIGRAPHY MEASUREMENTS ON STEEP SLOPES},
+  author={Chies, Claudio and Di Pietro, Tiziano and Lim, Jaeyoung and Achermann, Florian and Siegwart, Roland},
+  year={2024},
+  organization={ISSW}
+}
+```
+
 
 ## Installation
 ```
